@@ -1,3 +1,410 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* react-pdf AnnotationLayer 스타일 */
+.react-pdf__Page__annotations {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.react-pdf__Page__annotation {
+  position: absolute;
+}
+
+.react-pdf__Page__annotation--link {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--button {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--input {
+  cursor: text;
+}
+
+.react-pdf__Page__annotation--choice {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--signature {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--stamp {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--fileattachment {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--popup {
+  cursor: pointer;
+}
+
+/* react-pdf TextLayer 스타일 */
+.react-pdf__Page__textContent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.2;
+  line-height: 1.0;
+}
+
+.react-pdf__Page__textContent--selectable {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+.react-pdf__Page__textContent > span {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.react-pdf__Page__textContent--selectable > span {
+  color: transparent;
+}
+
+.react-pdf__Page__textContent--selectable > span::selection {
+  background: rgba(0, 0, 255, 0.3);
+}
+
+/* PDF 뷰어 스타일 */
+.pdf-document {
+  display: flex;
+  justify-content: center;
+}
+
+.pdf-page {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  margin: 0 auto;
+}
+
+.pdf-page canvas {
+  border-radius: 8px;
+}
+
+.react-pdf__Page__textContent {
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.react-pdf__Page__textContent:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* react-pdf 기본 스타일 */
+.react-pdf__Page {
+  margin: 1em auto;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-pdf__Page canvas {
+  border-radius: 8px;
+  max-width: 100%;
+  height: auto;
+}
+
+.react-pdf__Page__textContent {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: border-color 0.2s ease;
+}
+
+.react-pdf__Page__textContent:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* PDF 컨테이너 스타일 */
+.pdf-container {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 600px;
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+/* PDF 로딩 스타일 */
+.pdf-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+/* PDF 에러 스타일 */
+.pdf-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: rgba(254, 242, 242, 0.9);
+  border-radius: 12px;
+  border: 1px solid rgba(252, 165, 165, 0.3);
+}
+
+/* PDF 페이지 네비게이션 */
+.pdf-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  margin-top: 1rem;
+  backdrop-filter: blur(10px);
+}
+
+/* PDF 컨트롤 버튼 */
+.pdf-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.pdf-controls button {
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.pdf-controls button:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* PDF 줌 컨트롤 */
+.pdf-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.pdf-zoom-display {
+  min-width: 60px;
+  text-align: center;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* PDF 페이지 정보 */
+.pdf-page-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* PDF 진행률 바 */
+.pdf-progress-bar {
+  width: 120px;
+  height: 6px;
+  background: rgba(209, 213, 219, 0.5);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pdf-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* 반응형 PDF 뷰어 */
+@media (max-width: 768px) {
+  .pdf-container {
+    padding: 1rem;
+  }
+  
+  .pdf-navigation {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .pdf-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .react-pdf__Page {
+    margin: 0.5em auto;
+  }
+}
+
+/* PDF 텍스트 선택 개선 */
+.react-pdf__Page__textContent--selectable > span::selection {
+  background: rgba(59, 130, 246, 0.4);
+  color: transparent;
+}
+
+.react-pdf__Page__textContent--selectable > span::-moz-selection {
+  background: rgba(59, 130, 246, 0.4);
+  color: transparent;
+}
+
+/* PDF 어노테이션 스타일 */
+.react-pdf__Page__annotation {
+  transition: all 0.2s ease;
+}
+
+.react-pdf__Page__annotation:hover {
+  opacity: 0.8;
+}
+
+/* PDF 하이라이트 스타일 */
+.react-pdf__Page__annotation--highlight {
+  background: rgba(255, 255, 0, 0.3);
+  border-radius: 2px;
+}
+
+/* PDF 링크 스타일 */
+.react-pdf__Page__annotation--link {
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.react-pdf__Page__annotation--link:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* react-pdf 기본 스타일 */
+.react-pdf__Page__annotation--line {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--square {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--circle {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--polygon {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--polyline {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--highlight {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--underline {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--squiggly {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--strikeout {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--stamp {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--caret {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--ink {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--freedraw {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--sound {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--movie {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--screen {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--trapnet {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--printermark {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--watermark {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--3d {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--redact {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--widget {
+  cursor: pointer;
+}
+
+.react-pdf__Page__annotation--inklist {
+  cursor: pointer;
+}
+
+/* 텍스트 선택 스타일 */
+::selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -10,4 +417,26 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* 텍스트 줄임 처리를 위한 CSS 클래스 */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }

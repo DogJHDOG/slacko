@@ -1,368 +1,275 @@
-import { useState } from 'react';
-import Button from '../../components/common/Button';
-import Modal from '../../components/common/Modal';
-import Toast from '../../components/common/Toast';
-import { Calendar, CheckCircle, FileText, Link, Plus, X, Upload, Trash2} from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { 
+  Plus, Search, Briefcase, Filter, X
+} from 'lucide-react';
 
-export default function ProjectManagement() {
-  const [projects, setProjects] = useState([
-    {
-      id: 1,
-      name: '캡스톤 디자인',
-      description: '졸업작품 프로젝트',
-      status: '진행 중',
-      startDate: '2025-06-05',
-      endDate: '2025-07-30',
-      milestones: [
-        { id: 1, title: '주제 선정', completed: true, dueDate: '2025-06-05' },
-        { id: 2, title: '발표 초안 작성', completed: true, dueDate: '2025-06-12' },
-        { id: 3, title: '발표 자료 완성', completed: false, dueDate: '2025-06-20' },
-        { id: 4, title: '최종 발표 연습', completed: false, dueDate: '2025-06-25' }
-      ],
-      files: [
-        { id: 1, name: 'proposal.pdf', type: 'file' },
-        { id: 2, name: 'design-preview.png', type: 'image' },
-        { id: 3, name: 'https://notion.so/project-docs', type: 'link' }
-      ],
-      notes: '현재 발표 자료 작성 중. UI 디자인 검토 필요.'
-    },
-    {
-      id: 2,
-      name: '웹 포트폴리오',
-      description: '개인 포트폴리오 웹사이트 제작',
-      status: '완료',
-      startDate: '2025-05-01',
-      endDate: '2025-05-30',
-      milestones: [
-        { id: 1, title: '디자인 기획', completed: true, dueDate: '2025-05-05' },
-        { id: 2, title: '프론트엔드 개발', completed: true, dueDate: '2025-05-20' },
-        { id: 3, title: '배포 및 테스트', completed: true, dueDate: '2025-05-30' }
-      ],
-      files: [
-        { id: 1, name: 'wireframe.sketch', type: 'file' },
-        { id: 2, name: 'portfolio-screenshot.png', type: 'image' }
-      ],
-      notes: '성공적으로 배포 완료. 향후 업데이트 예정.'
-    }
-  ]);
+import ProjectModal from '../../components/project/ProjectModal';
+import ViewSelector from '../../components/project/ViewSelector';
+import BoardView from '../../components/project/BoardView';
+import ListView from '../../components/project/ListView';
+import TimelineView from '../../components/project/TimelineView';
+import AnalyticsView from '../../components/project/AnalyticsView';
+import ProjectDetailModal from '../../components/project/ProjectDetailModal';
+import TaskModal from '../../components/project/TaskModal';
+import { useProjectContext } from '../../context/ProjectContext';
 
+export default function AdvancedProjectManagement() {
+  const { projects, addProject, updateTask, addTask } = useProjectContext();
   const [selectedProject, setSelectedProject] = useState(null);
-  const [isSlideOpen, setIsSlideOpen] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newProject, setNewProject] = useState({
-    name: '',
-    description: '',
-    startDate: '',
-    endDate: '',
-    status: '진행 중',
-    milestones: [],
-    files: [],
-    notes: ''
+  const [activeView, setActiveView] = useState('board');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    status: 'all',
+    priority: 'all',
+    assignee: 'all',
+    tags: []
   });
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
-  const openProjectDetail = (project) => {
-    setSelectedProject(project);
-    setIsSlideOpen(true);
-  };
-
-  const closeProjectDetail = () => {
-    setIsSlideOpen(false);
-    setTimeout(() => setSelectedProject(null), 300);
-  };
-
-  const toggleMilestone = (projectId, milestoneId) => {
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          milestones: project.milestones.map(milestone => 
-            milestone.id === milestoneId 
-              ? { ...milestone, completed: !milestone.completed }
-              : milestone
-          )
-        };
-      }
-      return project;
-    }));
-    setToastMessage('마일스톤 상태가 업데이트되었습니다!');
-    setToastType('success');
-    setShowToast(true);
-  };
-
-  const addNewMilestone = (projectId) => {
-    const newMilestone = {
-      id: Date.now(),
-      title: '새 마일스톤',
-      completed: false,
-      dueDate: new Date().toISOString().split('T')[0]
-    };
+  // Analytics & Metrics
+  const analytics = useMemo(() => {
+    const totalProjects = projects.length;
+    const completedProjects = projects.filter(p => p.status === 'completed').length;
+    const inProgressProjects = projects.filter(p => p.status === 'in-progress').length;
+    const overallProgress = totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0;
     
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          milestones: [...project.milestones, newMilestone]
-        };
+    const totalTasks = projects.reduce((acc, p) => acc + (p.tasks?.length || 0), 0);
+    const completedTasks = projects.reduce((acc, p) => 
+      acc + (p.tasks?.filter(t => t.status === 'completed').length || 0), 0);
+    const taskCompletionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+    const totalBudget = projects.reduce((acc, p) => acc + (p.budget || 0), 0);
+    const totalSpent = projects.reduce((acc, p) => acc + (p.spent || 0), 0);
+    const budgetUtilization = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+
+    return {
+      totalProjects,
+      completedProjects,
+      inProgressProjects,
+      overallProgress,
+      totalTasks,
+      completedTasks,
+      taskCompletionRate,
+      totalBudget,
+      totalSpent,
+      budgetUtilization
+    };
+  }, [projects]);
+
+  // Filter and search logic
+  const filteredProjects = useMemo(() => {
+    return projects.filter(project => {
+      if (searchQuery && !project.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          !project.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
       }
-      return project;
-    }));
-    setToastMessage('새 마일스톤이 추가되었습니다!');
-    setToastType('success');
-    setShowToast(true);
-  };
+      if (filters.status !== 'all' && project.status !== filters.status) return false;
+      if (filters.priority !== 'all' && project.priority !== filters.priority) return false;
+      if (filters.assignee !== 'all' && !project.team.some(member => member.id.toString() === filters.assignee)) return false;
+      if (filters.tags.length > 0 && !filters.tags.some(tag => project.tags.includes(tag))) return false;
+      
+      return true;
+    });
+  }, [projects, searchQuery, filters]);
 
-  const getProgressPercentage = (milestones) => {
-    const completed = milestones.filter(m => m.completed).length;
-    return Math.round((completed / milestones.length) * 100);
-  };
-
-  const getDaysRemaining = (endDate) => {
-    const today = new Date();
-    const end = new Date(endDate);
-    const diffTime = end - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-  };
-
-  const ProjectCard = ({ project }) => {
-    const progressPercentage = getProgressPercentage(project.milestones);
-    const daysRemaining = getDaysRemaining(project.endDate);
-    const statusColor = project.status === '완료' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
-
-    return (
-      <div 
-        className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
-        onClick={() => openProjectDetail(project)}
-      >
-        <div className="flex justify-between items-start mb-3">
-          <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-            {project.status}
-          </span>
-        </div>
-        <p className="text-gray-600 text-sm mb-4">{project.description}</p>
-        <div className="flex items-center text-sm text-gray-500 mb-3">
-          <Calendar className="w-4 h-4 mr-1" />
-          <span>{formatDate(project.startDate)} ~ {formatDate(project.endDate)}</span>
-          {daysRemaining > 0 && project.status !== '완료' && (
-            <span className="ml-2 text-orange-600 font-medium">⏳ D-{daysRemaining}</span>
-          )}
-        </div>
-        <div className="mb-3">
-          <div className="flex justify-between text-sm mb-1">
-            <span>마일스톤 진행률</span>
-            <span>{project.milestones.filter(m => m.completed).length}/{project.milestones.length} 완료</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            ></div>
-          </div>
-        </div>
-        <div className="flex justify-between items-center text-sm text-gray-500">
-          <span>📂 자료: {project.files.length}개 첨부됨</span>
-          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 font-medium">
-            보기 →
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  const ProjectDetail = ({ project }) => {
-    if (!project) return null;
-
-    return (
-      <div className={`fixed top-0 right-0 h-full w-full md:w-1/2 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
-        isSlideOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}>
-        <div className="h-full overflow-y-auto">
-          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-900">{project.name}</h2>
-            <Button 
-              onClick={closeProjectDetail}
-              variant="ghost"
-              size="sm"
-              className="p-2 hover:bg-gray-100 rounded-full"
-            >
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
-          <div className="p-6 space-y-6">
-            {/* 기본 정보 */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold mb-2">📋 기본 정보</h3>
-              <p className="text-gray-700 mb-2">{project.description}</p>
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
-                <span>📅 {formatDate(project.startDate)} ~ {formatDate(project.endDate)}</span>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  project.status === '완료' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {project.status}
-                </span>
-              </div>
-            </div>
-            {/* 마일스톤 목록 */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">📅 마일스톤</h3>
-                <Button 
-                  onClick={() => addNewMilestone(project.id)}
-                  variant="primary"
-                  size="sm"
-                >
-                  + 새 마일스톤
-                </Button>
-              </div>
-              <ul className="space-y-2">
-                {project.milestones.map(milestone => (
-                  <li key={milestone.id} className="flex items-center gap-2">
-                    <Button
-                      onClick={() => toggleMilestone(project.id, milestone.id)}
-                      variant="ghost"
-                      size="sm"
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center p-0 ${milestone.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}
-                      aria-label={milestone.completed ? '완료됨' : '미완료'}
-                    >
-                      {milestone.completed && <CheckCircle className="w-4 h-4 text-white" />}
-                    </Button>
-                    <span className={milestone.completed ? 'line-through text-gray-400' : ''}>{milestone.title}</span>
-                    <span className="text-xs text-gray-500 ml-2">{formatDate(milestone.dueDate)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            {/* 파일/링크 */}
-            <div>
-              <h3 className="font-semibold mb-2">📁 첨부 자료</h3>
-              <ul className="space-y-2">
-                {project.files.map(file => (
-                  <li key={file.id} className="flex items-center gap-2">
-                    {file.type === 'file' && <FileText className="w-4 h-4 text-blue-500" />}
-                    {file.type === 'image' && <Upload className="w-4 h-4 text-purple-500" />}
-                    {file.type === 'link' && <Link className="w-4 h-4 text-green-500" />}
-                    <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">📎 자료 첨부</h3>
-                <button className="flex items-center text-blue-600 hover:text-blue-800 text-sm">
-                  <Upload className="w-4 h-4 mr-1" />
-                  업로드
-                </button>
-              </div>
-              <div className="space-y-2">
-                {project.files.map(file => (
-                  <div key={file.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                    {file.type === 'link' ? (
-                      <Link className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                    ) : file.type === 'image' ? (
-                      <span className="text-lg">🖼️</span>
-                    ) : (
-                      <FileText className="w-5 h-5 text-gray-600 flex-shrink-0" />
-                    )}
-                    <span className="flex-grow text-sm text-gray-700 truncate">{file.name}</span>
-                    <button className="text-red-600 hover:text-red-800">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-4 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500">파일을 드래그하거나 클릭하여 업로드</p>
-              </div>
-            </div>
-            {/* 노트 */}
-            <div>
-              <h3 className="font-semibold mb-2">📝 프로젝트 노트</h3>
-              <p className="text-gray-700 text-sm whitespace-pre-line">{project.notes}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 새 프로젝트 추가
-  const handleAddProject = () => {
-    if (!newProject.name.trim() || !newProject.startDate || !newProject.endDate) {
-      setToastMessage('프로젝트명, 시작일, 종료일을 입력하세요.');
-      setToastType('error');
-      setShowToast(true);
-      return;
-    }
-    setProjects([
-      {
-        ...newProject,
-        id: Date.now(),
-        milestones: [],
-        files: [],
-        notes: newProject.notes || ''
-      },
-      ...projects
-    ]);
-    setShowAddModal(false);
-    setNewProject({ name: '', description: '', startDate: '', endDate: '', status: '진행 중', milestones: [], files: [], notes: '' });
-    setToastMessage('새 프로젝트가 추가되었습니다!');
-    setToastType('success');
-    setShowToast(true);
+  const handleCreateProject = (newProject) => {
+    addProject(newProject);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 해더 */}
-      <div className="w-full bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 mb-0">
-        <div className="max-w mx-auto px-4 py-2 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">프로젝트 관리</h1>
-            <p className="text-sm text-gray-600">진행 중인 프로젝트를 한눈에 관리하세요!</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Responsive Header */}
+      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-20 shadow-sm">
+        <div className="w-full px-4 sm:px-6 py-3">
+          {/* Mobile and Desktop Header Layout */}
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            {/* Left side - Logo and Title */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="p-2 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg shadow-lg flex-shrink-0">
+                <Briefcase size={20} className="text-white sm:w-6 sm:h-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent truncate">
+                  프로젝트 관리
+                </h1>
+                <p className="text-xs text-slate-600 mt-0.5 truncate hidden sm:block">
+                  팀 협업과 프로젝트 진행을 관리하세요
+                </p>
+              </div>
+            </div>
+            
+            {/* Right side - Action Button */}
+            <div className="flex-shrink-0">
+              <button 
+                onClick={() => setShowProjectModal(true)}
+                className="px-3 py-2 sm:px-4 sm:py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 flex items-center gap-1 sm:gap-2 font-medium text-sm sm:text-base"
+              >
+                <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="hidden sm:inline">새 프로젝트</span>
+                <span className="sm:hidden">추가</span>
+              </button>
+            </div>
           </div>
-          <Button variant="primary" className="flex items-center gap-2" onClick={() => setShowAddModal(true)}>
-            <Plus className="w-4 h-4" /> 새 프로젝트
-          </Button>
         </div>
       </div>
-      {/* 메인 컨테이너 */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-8">
-          {/* 프로젝트 카드 리스트 */}
-          {projects.length === 0 ? (
-            <div className="text-center text-gray-400 py-12">아직 등록된 프로젝트가 없습니다.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {projects.map(project => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
+      
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        {/* Search and Filters Section */}
+        <div className="mb-4 sm:mb-6 space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="프로젝트, 작업, 팀원 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-12 sm:pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white shadow-sm text-sm sm:text-base"
+            />
+            {/* Mobile Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 sm:hidden"
+            >
+              <Filter size={16} />
+            </button>
+          </div>
+          
+          {/* Desktop Filters - Always visible on desktop */}
+          <div className="hidden sm:flex items-center gap-3 flex-wrap">
+            <select 
+              value={filters.status} 
+              onChange={(e) => setFilters({...filters, status: e.target.value})}
+              className="px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm min-w-0"
+            >
+              <option value="all">모든 상태</option>
+              <option value="not-started">시작 전</option>
+              <option value="in-progress">진행 중</option>
+              <option value="completed">완료</option>
+              <option value="on-hold">보류</option>
+            </select>
+            
+            <select 
+              value={filters.priority} 
+              onChange={(e) => setFilters({...filters, priority: e.target.value})}
+              className="px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm min-w-0"
+            >
+              <option value="all">모든 우선순위</option>
+              <option value="critical">긴급</option>
+              <option value="high">높음</option>
+              <option value="medium">보통</option>
+              <option value="low">낮음</option>
+            </select>
+          </div>
+          
+          {/* Mobile Filters - Collapsible */}
+          {showFilters && (
+            <div className="sm:hidden bg-white rounded-lg border border-slate-200 p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-slate-900">필터</h3>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">상태</label>
+                  <select 
+                    value={filters.status} 
+                    onChange={(e) => setFilters({...filters, status: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="all">모든 상태</option>
+                    <option value="not-started">시작 전</option>
+                    <option value="in-progress">진행 중</option>
+                    <option value="completed">완료</option>
+                    <option value="on-hold">보류</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">우선순위</label>
+                  <select 
+                    value={filters.priority} 
+                    onChange={(e) => setFilters({...filters, priority: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="all">모든 우선순위</option>
+                    <option value="critical">긴급</option>
+                    <option value="high">높음</option>
+                    <option value="medium">보통</option>
+                    <option value="low">낮음</option>
+                  </select>
+                </div>
+              </div>
             </div>
           )}
-          {/* 프로젝트 상세 슬라이드 */}
-          {selectedProject && (
-            <div className="mt-8">
-              <ProjectDetail project={selectedProject} />
-            </div>
-          )}
-          {/* 새 프로젝트 추가 모달, Toast 등 기존 코드 유지 */}
-          <Modal open={showAddModal} onClose={() => setShowAddModal(false)}>
-            {/* ...기존 모달 코드... */}
-            <Button onClick={handleAddProject}>추가</Button>
-          </Modal>
-          <Toast open={showToast} onClose={() => setShowToast(false)} type={toastType}>{toastMessage}</Toast>
         </div>
+
+        {/* View Selector - Responsive */}
+        <div className="mb-4 sm:mb-6">
+          <ViewSelector 
+            activeView={activeView}
+            setActiveView={setActiveView}
+            filteredProjectsCount={filteredProjects.length}
+          />
+        </div>
+        
+        {/* Content Views - All responsive by default */}
+        <div className="w-full overflow-hidden">
+          {activeView === 'board' && (
+            <BoardView 
+              filteredProjects={filteredProjects}
+              setSelectedProject={setSelectedProject}
+            />
+          )}
+          {activeView === 'list' && (
+            <ListView 
+              filteredProjects={filteredProjects}
+              setSelectedProject={setSelectedProject}
+            />
+          )}
+          {activeView === 'timeline' && (
+            <TimelineView 
+              filteredProjects={filteredProjects}
+              updateTask={updateTask}
+            />
+          )}
+          {activeView === 'analytics' && (
+            <AnalyticsView 
+              analytics={analytics}
+              projects={projects}
+            />
+          )}
+        </div>
+        
+        {/* Modals */}
+        <ProjectModal 
+          showModal={showProjectModal}
+          onClose={() => setShowProjectModal(false)}
+          onCreateProject={handleCreateProject}
+        />
+
+        <ProjectDetailModal 
+          selectedProject={selectedProject}
+          setSelectedProject={setSelectedProject}
+          updateTask={updateTask}
+          setShowTaskModal={setShowTaskModal}
+        />
+
+        <TaskModal 
+          showTaskModal={showTaskModal}
+          setShowTaskModal={setShowTaskModal}
+          selectedProject={selectedProject}
+          onAddTask={addTask}
+        />
       </div>
     </div>
   );
-} 
+}

@@ -7,20 +7,8 @@ export default function TodoSection({
   priorities,
   getPriorityColor,
   toggleTodo,
-  setQuickAddMode,
-  quickAddMode,
-  quickTask,
-  setQuickTask,
-  handleQuickAdd,
-  setShowAddModal,
-  showAddModal,
-  newTodo,
-  setNewTodo,
-  showAdvanced,
-  setShowAdvanced,
-  resetForm,
-  handleAddTodo,
-  categories
+  deleteTodo,
+  onAdd
 }) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -33,64 +21,20 @@ export default function TodoSection({
               {todoList.filter(todo => !todo.completed).length}개 남음
             </span>
           </div>
-          {/* 추가 버튼들 */}
+          {/* 추가 버튼 */}
           <div className="flex gap-2">
             <Button
-              onClick={() => setQuickAddMode(true)}
-              variant="secondary"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              빠른 추가
-            </Button>
-            <Button
-              onClick={() => setShowAddModal(true)}
+              onClick={onAdd}
               variant="primary"
               size="sm"
               className="flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              상세 추가
+              할 일 추가
             </Button>
           </div>
         </div>
       </div>
-
-      {/* 빠른 추가 인라인 폼 */}
-      {quickAddMode && (
-        <div className="p-4 bg-blue-50 border-b border-blue-200">
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={quickTask}
-              onChange={(e) => setQuickTask(e.target.value)}
-              placeholder="할 일을 입력하고 Enter를 누르세요"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyPress={(e) => e.key === 'Enter' && handleQuickAdd()}
-              autoFocus
-            />
-            <Button
-              onClick={handleQuickAdd}
-              variant="primary"
-              size="sm"
-            >
-              추가
-            </Button>
-            <Button
-              onClick={() => {
-                setQuickAddMode(false);
-                setQuickTask('');
-              }}
-              variant="ghost"
-              size="sm"
-              className="px-3 py-2 text-gray-600 hover:text-gray-800"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
 
       <div className="p-6">
         <div className="space-y-3">
@@ -118,21 +62,8 @@ export default function TodoSection({
                   />
                   <div className="flex-1">
                     <span className={`${todo.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                      {todo.task}
+                      {todo.text}
                     </span>
-                    <div className="flex items-center gap-2 mt-1">
-                      {todo.category && (
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                          {todo.category}
-                        </span>
-                      )}
-                      {todo.deadline && (
-                        <span className="text-xs text-gray-500 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(todo.deadline).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(todo.priority)}`}>
                     {priorityConfig.icon} {priorityConfig.label}

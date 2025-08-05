@@ -1,115 +1,367 @@
 import { useState } from 'react';
-import { Calendar, Clock, Plus, ChevronLeft, ChevronRight, BookOpen, Code, Check, RotateCcw, Flag, Trash2, X } from 'lucide-react';
-import Button from '../../components/common/Button';
+import { Calendar, Clock, ChevronLeft, ChevronRight, BookOpen, Code, RotateCcw, Flag, AlertCircle } from 'lucide-react';
+import { useProjectContext } from '../../context/ProjectContext';
+import { useStudyContext } from '../../context/StudyContext';
+import { getCurrentDate, formatDate as formatDateUtil, isToday as isTodayUtil } from '../../utils/dateUtils';
+import React from 'react';
+import EventDetailModal from '../../components/study/EventDetailModal';
 
 const StudyCalendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState('month'); // month, week, day
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: '알고리즘 6강 듣기',
-      type: 'study',
-      date: '2024-12-28',
-      time: '14:00',
-      duration: 2,
-      repeat: 'none',
-      memo: '중요 개념: DP 테이블 구조',
-      completed: false
-    },
-    {
-      id: 2,
-      title: 'OS 100~130p 읽기',
-      type: 'reading',
-      date: '2024-12-29',
-      time: '19:00',
-      duration: 1.5,
-      repeat: 'none',
-      memo: '',
-      completed: true
-    },
-    {
-      id: 3,
-      title: '캡스톤 중간발표',
-      type: 'project',
-      date: '2024-12-30',
-      time: '14:00',
-      duration: 1,
-      repeat: 'none',
-      memo: '발표자료 준비 완료',
-      completed: false
-    },
-    {
-      id: 4,
-      title: '복습: 자료구조',
-      type: 'review',
-      date: '2024-12-31',
-      time: '10:00',
-      duration: 1,
-      repeat: 'weekly',
-      memo: '지난 주 학습 내용 복습',
-      completed: false
-    }
-  ]);
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    type: 'study',
-    date: '',
-    time: '',
-    duration: 1,
-    repeat: 'none',
-    memo: ''
-  });
+  const { projects } = useProjectContext();
+  const { subjects, textbooks, studyEvents } = useStudyContext();
 
+  const [currentDate, setCurrentDate] = useState(getCurrentDate());
+  const [view, setView] = useState('month'); // month, week, day
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedEvents, setSelectedEvents] = useState([]);
+
+  // 이벤트 타입 설정
   const eventTypes = {
     study: { label: '학습', color: 'bg-blue-500', icon: BookOpen },
-    review: { label: '복습', color: 'bg-green-500', icon: RotateCcw },
-    project: { label: '프로젝트', color: 'bg-purple-500', icon: Flag },
-    reading: { label: '원서읽기', color: 'bg-orange-500', icon: Code },
+    reading: { label: '독서', color: 'bg-green-500', icon: BookOpen },
+    coding: { label: '코딩', color: 'bg-purple-500', icon: Code },
+    project: { label: '프로젝트', color: 'bg-orange-500', icon: Flag },
+    deadline: { label: '마감일', color: 'bg-red-500', icon: AlertCircle }
   };
 
   const repeatOptions = {
-    none: '반복 안함',
+    none: '반복 없음',
     daily: '매일',
     weekly: '매주',
     monthly: '매월'
   };
 
+  // 프로젝트 데이터를 캘린더 이벤트로 변환
+  const getProjectEvents = () => {
+    const projectEvents = [];
+    
+    projects.forEach(project => {
+      // 마일스톤 이벤트 추가
+      project.milestones?.forEach(milestone => {
+        // 마일스톤 완료일 이벤트
+        projectEvents.push({
+          id: `milestone-${milestone.id}`,
+          title: `${project.name}: ${milestone.title}`,
+          type: 'project',
+          date: milestone.dueDate,
+          time: '',
+          duration: 0,
+          repeat: 'none',
+          memo: milestone.description,
+          completed: milestone.completed,
+          projectColor: project.color,
+          projectIcon: project.icon
+        });
+        
+        // 마일스톤 준비 기간 이벤트 (마감일 3일 전부터 마감일까지)
+        if (milestone.dueDate) {
+          const startDate = new Date(milestone.dueDate);
+          startDate.setDate(startDate.getDate() - 3);
+          const endDate = new Date(milestone.dueDate);
+          
+          for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            projectEvents.push({
+              id: `milestone-prep-${milestone.id}-${d.toISOString().split('T')[0]}`,
+              title: `${project.name}: ${milestone.title} 준비`,
+              type: 'project',
+              date: d.toISOString().split('T')[0],
+              time: '',
+              duration: 0,
+              repeat: 'daily',
+              memo: milestone.description,
+              completed: milestone.completed,
+              projectColor: project.color,
+              projectIcon: project.icon
+            });
+          }
+        }
+      });
+
+      // 작업 이벤트 추가
+      project.tasks?.forEach(task => {
+        if (task.dueDate) {
+          // 작업 기간 설정
+          let startDate, endDate;
+          
+          if (task.startDate) {
+            // 시작일이 있는 경우: 시작일부터 마감일까지
+            startDate = new Date(task.startDate);
+            endDate = new Date(task.dueDate);
+          } else {
+            // 시작일이 없는 경우: 마감일 7일 전부터 마감일까지
+            startDate = new Date(task.dueDate);
+            startDate.setDate(startDate.getDate() - 7);
+            endDate = new Date(task.dueDate);
+          }
+          
+          // 작업 기간 동안 매일 이벤트 생성
+          for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          projectEvents.push({
+              id: `task-${task.id}-${d.toISOString().split('T')[0]}`,
+            title: `${project.name}: ${task.title}`,
+              type: 'project',
+              date: d.toISOString().split('T')[0],
+            time: '',
+            duration: 0,
+              repeat: 'daily',
+              memo: task.description || '',
+            completed: task.status === 'completed',
+            projectColor: project.color,
+            projectIcon: project.icon,
+            priority: task.priority
+          });
+          }
+        }
+      });
+      
+      // 프로젝트 시작/종료일 이벤트 추가
+      if (project.startDate) {
+        // 프로젝트 시작일 이벤트
+        projectEvents.push({
+          id: `project-start-${project.id}`,
+          title: `${project.name} 시작`,
+          type: 'project',
+          date: project.startDate,
+          time: '',
+          duration: 0,
+          repeat: 'none',
+          memo: project.description,
+          completed: false,
+          projectColor: project.color,
+          projectIcon: project.icon
+        });
+        
+        // 프로젝트 시작 준비 기간 (시작일 3일 전부터 시작일까지)
+        const prepStartDate = new Date(project.startDate);
+        prepStartDate.setDate(prepStartDate.getDate() - 3);
+        const startDate = new Date(project.startDate);
+        
+        for (let d = new Date(prepStartDate); d <= startDate; d.setDate(d.getDate() + 1)) {
+          projectEvents.push({
+            id: `project-prep-${project.id}-${d.toISOString().split('T')[0]}`,
+            title: `${project.name} 시작 준비`,
+            type: 'project',
+            date: d.toISOString().split('T')[0],
+            time: '',
+            duration: 0,
+            repeat: 'daily',
+            memo: '프로젝트 시작 준비',
+            completed: false,
+            projectColor: project.color,
+            projectIcon: project.icon
+          });
+        }
+      }
+      
+      if (project.endDate) {
+        // 프로젝트 마감일 이벤트
+        projectEvents.push({
+          id: `project-end-${project.id}`,
+          title: `${project.name} 마감`,
+          type: 'deadline',
+          date: project.endDate,
+          time: '',
+          duration: 0,
+          repeat: 'none',
+          memo: project.description,
+          completed: project.status === 'completed',
+          projectColor: project.color,
+          projectIcon: project.icon
+        });
+        
+        // 프로젝트 마감 준비 기간 (마감일 7일 전부터 마감일까지)
+        const prepStartDate = new Date(project.endDate);
+        prepStartDate.setDate(prepStartDate.getDate() - 7);
+        const endDate = new Date(project.endDate);
+        
+        for (let d = new Date(prepStartDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          projectEvents.push({
+            id: `project-end-prep-${project.id}-${d.toISOString().split('T')[0]}`,
+            title: `${project.name} 마감 준비`,
+            type: 'deadline',
+            date: d.toISOString().split('T')[0],
+            time: '',
+            duration: 0,
+            repeat: 'daily',
+            memo: '프로젝트 마감 준비',
+            completed: project.status === 'completed',
+            projectColor: project.color,
+            projectIcon: project.icon
+          });
+        }
+      }
+    });
+    
+    return projectEvents;
+  };
+
+  // 학습 과목 데이터를 캘린더 이벤트로 변환
+  const getStudySubjectEvents = () => {
+    const studySubjectEvents = [];
+    
+    subjects.forEach(subject => {
+      // 미완료 챕터들의 학습 기간 이벤트 추가
+      const incompleteChapters = subject.chapters.filter(chapter => !chapter.completed);
+      
+      incompleteChapters.forEach((chapter, index) => {
+        // 각 챕터별 학습 기간 설정
+        let startDate, endDate;
+        
+        if (chapter.lastStudied) {
+          // 마지막 학습일이 있는 경우: 마지막 학습일부터 7일간
+          startDate = new Date(chapter.lastStudied);
+          endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + 7);
+        } else {
+          // 마지막 학습일이 없는 경우: 오늘부터 14일간
+          startDate = new Date();
+          endDate = new Date();
+          endDate.setDate(endDate.getDate() + 14);
+        }
+        
+        // 학습 기간 동안 매일 이벤트 생성
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          studySubjectEvents.push({
+            id: `chapter-${subject.id}-${chapter.id}-${d.toISOString().split('T')[0]}`,
+            title: `${subject.name}: ${chapter.name}`,
+            type: 'study',
+            date: d.toISOString().split('T')[0],
+            time: '10:00',
+            duration: 1.5,
+            repeat: 'daily',
+            memo: chapter.memo || '학습 예정',
+            completed: false,
+            subjectColor: subject.color,
+            subjectIcon: '📚'
+          });
+        }
+      });
+
+      // 과목 완료 목표일 이벤트 추가
+      if (subject.targetCompletionDate) {
+        studySubjectEvents.push({
+          id: `subject-complete-${subject.id}`,
+          title: `${subject.name} 완료 목표`,
+          type: 'study',
+          date: subject.targetCompletionDate,
+          time: '',
+          duration: 0,
+          repeat: 'none',
+          memo: `${subject.completedChapters}/${subject.totalChapters} 챕터 완료`,
+          completed: false,
+          subjectColor: subject.color,
+          subjectIcon: '🎯'
+        });
+      }
+    });
+    
+    return studySubjectEvents;
+  };
+
+  // 원서 학습 데이터를 캘린더 이벤트로 변환
+  const getTextbookEvents = () => {
+    const textbookEvents = [];
+    
+    textbooks.forEach(textbook => {
+      // 원서 완료 목표일 이벤트 추가
+      if (textbook.targetDate) {
+        textbookEvents.push({
+          id: `textbook-complete-${textbook.id}`,
+          title: `${textbook.title} 완료 목표`,
+          type: 'reading',
+          date: textbook.targetDate,
+          time: '',
+          duration: 0,
+          repeat: 'none',
+          memo: `${textbook.currentPage}/${textbook.totalPages}페이지 완료`,
+          completed: false,
+          textbookColor: textbook.priority === 'high' ? 'red' : textbook.priority === 'medium' ? 'orange' : 'green',
+          textbookIcon: '📖'
+        });
+      }
+
+      // 원서 학습 기간 이벤트 추가
+      let startDate, endDate;
+      
+      if (textbook.lastReadDate && textbook.targetDate) {
+        // 마지막 읽은 날짜부터 목표일까지
+        startDate = new Date(textbook.lastReadDate);
+        endDate = new Date(textbook.targetDate);
+      } else if (textbook.targetDate) {
+        // 목표일이 있는 경우: 오늘부터 목표일까지
+        startDate = new Date();
+        endDate = new Date(textbook.targetDate);
+      } else if (textbook.lastReadDate) {
+        // 마지막 읽은 날짜만 있는 경우: 마지막 읽은 날짜부터 30일간
+        startDate = new Date(textbook.lastReadDate);
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 30);
+      } else {
+        // 아무 정보도 없는 경우: 오늘부터 30일간
+        startDate = new Date();
+        endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
+      }
+      
+      // 학습 기간 동안 매일 독서 이벤트 생성
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        textbookEvents.push({
+          id: `textbook-daily-${textbook.id}-${d.toISOString().split('T')[0]}`,
+          title: `${textbook.title} 독서`,
+          type: 'reading',
+          date: d.toISOString().split('T')[0],
+          time: '20:00',
+          duration: 1,
+          repeat: 'daily',
+          memo: `목표: ${textbook.dailyGoal || 10}페이지`,
+          completed: false,
+          textbookColor: textbook.priority === 'high' ? 'red' : textbook.priority === 'medium' ? 'orange' : 'green',
+          textbookIcon: '📚'
+        });
+      }
+    });
+    
+    return textbookEvents;
+  };
+
+  // 모든 이벤트 통합 (학습 이벤트 + 학습 과목 이벤트 + 원서 학습 이벤트 + 프로젝트 이벤트)
+  const allEvents = [...studyEvents, ...getStudySubjectEvents(), ...getTextbookEvents(), ...getProjectEvents()];
+
   // 날짜 관련 유틸리티 함수들
   const formatDate = (date) => {
-    return date.toISOString().split('T')[0];
+    return formatDateUtil(date);
   };
 
   const getMonthCalendar = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
     
     const calendar = [];
-    const current = new Date(startDate);
+    let currentWeek = [];
     
-    for (let week = 0; week < 6; week++) {
-      const weekDays = [];
-      for (let day = 0; day < 7; day++) {
-        weekDays.push(new Date(current));
-        current.setDate(current.getDate() + 1);
+    for (let i = 0; i < 42; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      currentWeek.push(currentDate);
+      
+      if (currentWeek.length === 7) {
+        calendar.push(currentWeek);
+        currentWeek = [];
       }
-      calendar.push(weekDays);
-      if (current > lastDay && current.getDay() === 0) break;
     }
     
     return calendar;
   };
 
   const getWeekDays = (date) => {
+    const weekDays = [];
     const startOfWeek = new Date(date);
     startOfWeek.setDate(date.getDate() - date.getDay());
     
-    const weekDays = [];
     for (let i = 0; i < 7; i++) {
       const day = new Date(startOfWeek);
       day.setDate(startOfWeek.getDate() + i);
@@ -120,7 +372,7 @@ const StudyCalendar = () => {
 
   const getEventsForDate = (date) => {
     const dateStr = formatDate(date);
-    return events.filter(event => event.date === dateStr);
+    return allEvents.filter(event => event.date === dateStr);
   };
 
   const navigateDate = (direction) => {
@@ -143,47 +395,26 @@ const StudyCalendar = () => {
     setCurrentDate(newDate);
   };
 
-  const handleAddEvent = () => {
-    if (!newEvent.title || !newEvent.date) return;
-
-    const event = {
-      id: Date.now(),
-      ...newEvent,
-      completed: false
-    };
-
-    setEvents([...events, event]);
-    setNewEvent({
-      title: '',
-      type: 'study',
-      date: '',
-      time: '',
-      duration: 1,
-      repeat: 'none',
-      memo: ''
-    });
-    setShowAddModal(false);
+  // 일정 클릭 핸들러
+  const handleDateClick = (date) => {
+    const eventsForDate = getEventsForDate(date);
+    setSelectedDate(date);
+    setSelectedEvents(eventsForDate);
+    setShowEventModal(true);
   };
 
-  const toggleEventComplete = (eventId) => {
-    setEvents(events.map(event => 
-      event.id === eventId ? { ...event, completed: !event.completed } : event
-    ));
+  // 모달 닫기 핸들러
+  const handleCloseModal = () => {
+    setShowEventModal(false);
+    setSelectedDate(null);
+    setSelectedEvents([]);
   };
 
-  const deleteEvent = (eventId) => {
-    setEvents(events.filter(event => event.id !== eventId));
-  };
-
-  const openAddModal = (date) => {
-    setNewEvent(prev => ({ ...prev, date: formatDate(date) }));
-    setShowAddModal(true);
-  };
+  // 일정 추가/수정/삭제 기능 제거 - 기존 데이터만 표시
 
   // 월간 보기 렌더링
   const renderMonthView = () => {
     const calendar = getMonthCalendar(currentDate);
-    const today = new Date();
     
     return (
       <div className="bg-white rounded-lg shadow-sm border">
@@ -199,16 +430,16 @@ const StudyCalendar = () => {
           <div key={weekIndex} className="grid grid-cols-7 border-b last:border-b-0">
             {week.map((date, dayIndex) => {
               const dayEvents = getEventsForDate(date);
-              const isToday = formatDate(date) === formatDate(today);
+              const isToday = isTodayUtil(date);
               const isCurrentMonth = date.getMonth() === currentDate.getMonth();
               
               return (
                 <div 
                   key={dayIndex}
-                  className={`min-h-24 p-2 border-r last:border-r-0 cursor-pointer hover:bg-gray-50 ${
+                   className={`min-h-24 p-2 border-r last:border-r-0 cursor-pointer hover:bg-gray-50 transition-colors ${
                     !isCurrentMonth ? 'bg-gray-50 text-gray-400' : ''
                   }`}
-                  onClick={() => openAddModal(date)}
+                   onClick={() => handleDateClick(date)}
                 >
                   <div className={`text-sm font-medium mb-1 ${
                     isToday ? 'bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center' : ''
@@ -217,29 +448,30 @@ const StudyCalendar = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    {dayEvents.slice(0, 2).map(event => {
+                     {dayEvents.slice(0, 3).map(event => {
                       const typeConfig = eventTypes[event.type];
                       const Icon = typeConfig.icon;
                       
                       return (
                         <div 
                           key={event.id}
-                          className={`text-xs px-1 py-0.5 rounded flex items-center gap-1 ${typeConfig.color} text-white ${
-                            event.completed ? 'opacity-60 line-through' : ''
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleEventComplete(event.id);
-                          }}
+                          className={`text-xs px-1 py-0.5 rounded flex items-center gap-1 ${
+                            event.projectColor ? 'text-white' : `${typeConfig.color} text-white`
+                          } ${event.completed ? 'opacity-60 line-through' : ''}`}
+                          style={event.projectColor ? { backgroundColor: event.projectColor } : {}}
                         >
-                          <Icon size={10} />
+                          {event.projectIcon ? (
+                            <span className="text-xs">{event.projectIcon}</span>
+                          ) : (
+                            <Icon size={10} />
+                          )}
                           <span className="truncate">{event.title}</span>
                         </div>
                       );
                     })}
-                    {dayEvents.length > 2 && (
+                     {dayEvents.length > 3 && (
                       <div className="text-xs text-gray-500">
-                        +{dayEvents.length - 2}개 더
+                         +{dayEvents.length - 3}개 더
                       </div>
                     )}
                   </div>
@@ -255,14 +487,13 @@ const StudyCalendar = () => {
   // 주간 보기 렌더링
   const renderWeekView = () => {
     const weekDays = getWeekDays(currentDate);
-    const today = new Date();
     
     return (
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="grid grid-cols-8 border-b">
           <div className="p-3 border-r"></div>
           {weekDays.map((date, index) => {
-            const isToday = formatDate(date) === formatDate(today);
+            const isToday = isTodayUtil(date);
             return (
               <div key={index} className="p-3 text-center border-r last:border-r-0">
                 <div className="font-medium text-gray-600">
@@ -284,7 +515,10 @@ const StudyCalendar = () => {
               {hour}:00
             </div>
             {weekDays.map((date, dayIndex) => {
-              const dayEvents = getEventsForDate(date).filter(event => {
+                const dayEvents = getEventsForDate(date);
+                // 시간대별 필터링 (시간이 있는 일정만 해당 시간대에 표시)
+                const timeFilteredEvents = dayEvents.filter(event => {
+                  if (!event.time) return true; // 시간이 없는 일정은 모든 시간대에 표시
                 const eventHour = parseInt(event.time?.split(':')[0] || '0');
                 return eventHour === hour;
               });
@@ -293,28 +527,34 @@ const StudyCalendar = () => {
                 <div 
                   key={dayIndex}
                   className="p-1 border-r last:border-r-0 cursor-pointer hover:bg-gray-50"
-                  onClick={() => openAddModal(date)}
+                   onClick={() => handleDateClick(date)}
                 >
-                  {dayEvents.map(event => {
+                   {timeFilteredEvents.map(event => {
                     const typeConfig = eventTypes[event.type];
                     const Icon = typeConfig.icon;
                     
                     return (
                       <div 
                         key={event.id}
-                        className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${typeConfig.color} text-white mb-1 ${
-                          event.completed ? 'opacity-60 line-through' : ''
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleEventComplete(event.id);
-                        }}
+                        className={`text-xs px-2 py-1 rounded flex items-center gap-1 mb-1 ${
+                          event.projectColor ? 'text-white' : `${typeConfig.color} text-white`
+                        } ${event.completed ? 'opacity-60 line-through' : ''}`}
+                        style={event.projectColor ? { backgroundColor: event.projectColor } : {}}
                       >
-                        <Icon size={10} />
+                        {event.projectIcon ? (
+                          <span className="text-xs">{event.projectIcon}</span>
+                        ) : (
+                          <Icon size={10} />
+                        )}
                         <span className="truncate">{event.title}</span>
                       </div>
                     );
                   })}
+                   {timeFilteredEvents.length === 0 && (
+                     <div className="text-xs text-gray-400 text-center py-1">
+                       -
+                     </div>
+                   )}
                 </div>
               );
             })}
@@ -338,13 +578,7 @@ const StudyCalendar = () => {
               {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월 {currentDate.getDate()}일
               {isToday && <span className="ml-2 text-sm bg-blue-500 text-white px-2 py-1 rounded">오늘</span>}
             </h3>
-            <button
-              onClick={() => openAddModal(currentDate)}
-              className="flex items-center gap-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              <Plus size={16} />
-              일정 추가
-            </button>
+
           </div>
         </div>
         
@@ -363,19 +597,27 @@ const StudyCalendar = () => {
                 return (
                   <div 
                     key={event.id}
-                    className={`p-4 rounded-lg border-l-4 ${typeConfig.color.replace('bg-', 'border-')} bg-gray-50 ${
+                     className={`p-4 rounded-lg border-l-4 cursor-pointer hover:bg-gray-100 transition-colors ${
+                      event.projectColor ? 'border-l-4' : typeConfig.color.replace('bg-', 'border-')
+                    } bg-gray-50 ${
                       event.completed ? 'opacity-60' : ''
                     }`}
+                    style={event.projectColor ? { borderLeftColor: event.projectColor } : {}}
+                     onClick={() => handleDateClick(currentDate)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <Icon size={16} className={typeConfig.color.replace('bg-', 'text-')} />
+                          {event.projectIcon ? (
+                            <span className="text-lg">{event.projectIcon}</span>
+                          ) : (
+                            <Icon size={16} className={typeConfig.color.replace('bg-', 'text-')} />
+                          )}
                           <h4 className={`font-medium ${event.completed ? 'line-through' : ''}`}>
                             {event.title}
                           </h4>
                           <span className="text-xs px-2 py-1 bg-gray-200 rounded">
-                            {eventTypes[event.type].label}
+                            {typeConfig.label}
                           </span>
                         </div>
                         
@@ -402,25 +644,6 @@ const StudyCalendar = () => {
                           </p>
                         )}
                       </div>
-                      
-                      <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={() => toggleEventComplete(event.id)}
-                          className={`p-1 rounded ${
-                            event.completed 
-                              ? 'bg-green-500 text-white' 
-                              : 'border-2 border-gray-300 hover:border-green-500'
-                          }`}
-                        >
-                          <Check size={16} />
-                        </button>
-                        <button
-                          onClick={() => deleteEvent(event.id)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
                     </div>
                   </div>
                 );
@@ -433,20 +656,34 @@ const StudyCalendar = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* 해더 - 카드 바깥 */}
-      <div className="w-full bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 mb-0">
-        <div className="max-w mx-auto px-4 py-3.5 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <span role="img" aria-label="캘린더">📅</span> 학습 캘린더
-          </h1>
-          <div className="mt-4 md:mt-0 flex gap-2">
-          <Button variant="primary" size="md" onClick={() => setShowAddModal(true)}>+ 일정 추가</Button>
-        </div>
+      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-20 shadow-sm">
+        <div className="max-w mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl shadow-lg">
+              <Calendar size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                학습 캘린더
+              </h1>
+              <p className="text-xs text-slate-600 mt-0.5">체계적인 일정 관리로 학습 효과를 극대화하세요</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-50/80 backdrop-blur px-3 py-2 rounded-lg border border-slate-200/50">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-xs text-slate-600">오늘 {getEventsForDate(new Date()).length}개 일정</span>
+            </div>
+
+          </div>
         </div>
       </div>
+      
       {/* 메인 카드 */}
-      <div className="max-w-7xl mx-auto px-6 pb-12">
+      <div className="max-w-7xl mx-auto px-6 py-6 pb-12">
         <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-8">
           {/* 캘린더 헤더/탭/네비게이션 등 */}
           <div className="mb-6">
@@ -510,141 +747,13 @@ const StudyCalendar = () => {
         </div>
       </div>
       
-      {/* 일정 추가 모달 */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">새 일정 추가</h3>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  제목 *
-                </label>
-                <input
-                  type="text"
-                  value={newEvent.title}
-                  onChange={(e) => setNewEvent(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="예: 알고리즘 6강 듣기"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  종류
-                </label>
-                <select
-                  value={newEvent.type}
-                  onChange={(e) => setNewEvent(prev => ({ ...prev, type: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {Object.entries(eventTypes).map(([key, { label }]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    날짜 *
-                  </label>
-                  <input
-                    type="date"
-                    value={newEvent.date}
-                    onChange={(e) => setNewEvent(prev => ({ ...prev, date: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    시간
-                  </label>
-                  <input
-                    type="time"
-                    value={newEvent.time}
-                    onChange={(e) => setNewEvent(prev => ({ ...prev, time: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    소요시간 (시간)
-                  </label>
-                  <input
-                    type="number"
-                    min="0.5"
-                    step="0.5"
-                    value={newEvent.duration}
-                    onChange={(e) => setNewEvent(prev => ({ ...prev, duration: parseFloat(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    반복
-                  </label>
-                  <select
-                    value={newEvent.repeat}
-                    onChange={(e) => setNewEvent(prev => ({ ...prev, repeat: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {Object.entries(repeatOptions).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  메모
-                </label>
-                <textarea
-                  value={newEvent.memo}
-                  onChange={(e) => setNewEvent(prev => ({ ...prev, memo: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows="3"
-                  placeholder="추가 정보나 메모를 입력하세요"
-                />
-              </div>
-              
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddEvent}
-                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  추가
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+       {/* 일정 상세 모달 */}
+       <EventDetailModal
+         isOpen={showEventModal}
+         onClose={handleCloseModal}
+         events={selectedEvents}
+         selectedDate={selectedDate}
+       />
     </div>
   );
 };

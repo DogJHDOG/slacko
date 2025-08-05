@@ -1,131 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
-import Modal from '../../components/common/Modal';
-import Toast from '../../components/common/Toast';
-import { Book, Plus, X, FileText } from 'lucide-react';
-import FileUpload from '../../components/common/FileUpload';
-import AIPlanGenerator from '../../components/plan/AIPlanGenerator';
+import { Plus, Book, Library } from 'lucide-react';
+import { useStudyContext } from '../../context/StudyContext';
 
 export default function TextbookManagement() {
-  const [books, setBooks] = useState([
-    {
-      id: 1,
-      title: 'Operating Systems: Three Easy Pieces',
-      author: 'Remzi H. Arpaci-Dusseau',
-      publisher: 'CreateSpace',
-      totalPages: 400,
-      currentPage: 120,
-      targetDate: '2025-07-30',
-      status: '읽는 중',
-      startDate: '2025-06-01',
-      notes: [
-        {
-          id: 1,
-          pageRange: '120-125',
-          content: '컨텍스트 스위칭 설명 중요! CPU 상태 저장과 복원 과정 정리',
-          date: '2025-06-20',
-          keywords: ['컨텍스트 스위칭', 'CPU 상태']
-        },
-        {
-          id: 2,
-          pageRange: '126-135',
-          content: 'CPU 스케줄링 정책 - FIFO, SJF, STCF 비교 분석',
-          date: '2025-06-21',
-          keywords: ['스케줄링', 'FIFO', 'SJF']
-        }
-      ],
-      readingHistory: [
-        { date: '2025-06-20', startPage: 100, endPage: 125, pagesRead: 25 },
-        { date: '2025-06-21', startPage: 126, endPage: 135, pagesRead: 9 }
-      ]
-    },
-    {
-      id: 2,
-      title: 'Deep Learning',
-      author: 'Ian Goodfellow',
-      publisher: 'MIT Press',
-      totalPages: 775,
-      currentPage: 245,
-      targetDate: '2025-08-15',
-      status: '읽는 중',
-      startDate: '2025-05-15',
-      notes: [
-        {
-          id: 1,
-          pageRange: '200-245',
-          content: 'Regularization 기법들 - L1, L2, Dropout의 차이점과 적용 사례',
-          date: '2025-06-22',
-          keywords: ['Regularization', 'L1', 'L2', 'Dropout']
-        }
-      ],
-      readingHistory: [
-        { date: '2025-06-22', startPage: 200, endPage: 245, pagesRead: 45 }
-      ]
-    },
-    {
-      id: 3,
-      title: 'Introduction to Algorithms',
-      author: 'Thomas H. Cormen',
-      publisher: 'MIT Press',
-      totalPages: 1312,
-      currentPage: 1312,
-      targetDate: '2025-06-01',
-      status: '완료',
-      startDate: '2025-01-01',
-      notes: [
-        {
-          id: 1,
-          pageRange: '전체',
-          content: '알고리즘 기초부터 고급까지 완독 완료. 특히 동적 프로그래밍 파트가 유용했음',
-          date: '2025-06-01',
-          keywords: ['동적 프로그래밍', '그래프', '정렬']
-        }
-      ],
-      readingHistory: []
+  const navigate = useNavigate();
+  const { textbooks, deleteTextbook } = useStudyContext();
+  const [books, setBooks] = useState([]);
+
+  // 제목을 간단하게 표시하는 함수
+  const getShortTitle = (title) => {
+    if (!title) return '';
+    
+    // 파일명에서 추출된 긴 제목을 간단하게 처리
+    // 첫 번째 하이픈이나 대시 이전의 부분만 사용
+    const shortTitle = title.split(/[-–—]/)[0].trim();
+    
+    // 25자 이상이면 "..." 추가
+    if (shortTitle.length > 25) {
+      return shortTitle.substring(0, 25) + '...';
     }
-  ]);
-
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('전체');
-  const [newReadingLog, setNewReadingLog] = useState({
-    startPage: '',
-    endPage: '',
-    note: '',
-    keywords: ''
-  });
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newBook, setNewBook] = useState({
-    title: '',
-    author: '',
-    publisher: '',
-    totalPages: '',
-    targetDate: '',
-    status: '읽는 중',
-    startDate: '',
-    currentPage: 0
-  });
-  const [addBookFile, setAddBookFile] = useState(null);
-  const [addBookDates, setAddBookDates] = useState({ start: '', end: '' });
-  const [addBookDaysLeft, setAddBookDaysLeft] = useState(null);
-  // 1. 상태 추가
-  const [studyPurpose, setStudyPurpose] = useState('');
-  const [studyIntensity, setStudyIntensity] = useState('보통');
-  const [planTasks, setPlanTasks] = useState([]);
-  // 1. 단계 상태 추가
-  const [addStep, setAddStep] = useState(1);
-
-  const openBookDetail = (book) => {
-    setSelectedBook(book);
-    setIsDetailOpen(true);
+    
+    return shortTitle;
   };
 
-  const closeBookDetail = () => {
-    setIsDetailOpen(false);
-    setTimeout(() => setSelectedBook(null), 300);
+  // 컴포넌트 마운트 시 StudyContext의 textbooks 데이터 사용
+  useEffect(() => {
+    setBooks(textbooks);
+  }, [textbooks]);
+
+  const [filterStatus, setFilterStatus] = useState('전체');
+
+  const openBookDetail = (book) => {
+    // 상세 페이지로 이동
+    navigate(`/textbook/${book.id}`);
+  };
+
+  const openAddBookPage = () => {
+    // 새 원서 생성 페이지로 이동
+    navigate('/textbook/add');
   };
 
   const getProgressPercentage = (currentPage, totalPages) => {
@@ -152,52 +66,6 @@ export default function TextbookManagement() {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
-  const addReadingLog = (bookId) => {
-    if (!newReadingLog.startPage || !newReadingLog.endPage) return;
-
-    const startPage = parseInt(newReadingLog.startPage);
-    const endPage = parseInt(newReadingLog.endPage);
-    const pagesRead = endPage - startPage + 1;
-
-    const newNote = {
-      id: Date.now(),
-      pageRange: `${startPage}-${endPage}`,
-      content: newReadingLog.note,
-      date: new Date().toISOString().split('T')[0],
-      keywords: newReadingLog.keywords.split(',').map(k => k.trim()).filter(k => k)
-    };
-
-    const newHistory = {
-      date: new Date().toISOString().split('T')[0],
-      startPage,
-      endPage,
-      pagesRead
-    };
-
-    setBooks(books.map(book => {
-      if (book.id === bookId) {
-        return {
-          ...book,
-          currentPage: Math.max(book.currentPage, endPage),
-          notes: [...book.notes, newNote],
-          readingHistory: [...book.readingHistory, newHistory]
-        };
-      }
-      return book;
-    }));
-
-    setNewReadingLog({
-      startPage: '',
-      endPage: '',
-      note: '',
-      keywords: ''
-    });
-    
-    setToastMessage('독서 기록이 추가되었습니다!');
-    setToastType('success');
-    setShowToast(true);
-  };
-
   const filteredBooks = books.filter(book => {
     if (filterStatus === '전체') return true;
     return book.status === filterStatus;
@@ -207,403 +75,315 @@ export default function TextbookManagement() {
     const progressPercentage = getProgressPercentage(book.currentPage, book.totalPages);
     const recommendedPages = getRecommendedDailyPages(book);
     const statusColor = {
-      '읽는 중': 'bg-blue-100 text-blue-800',
-      '완료': 'bg-green-100 text-green-800',
-      '미시작': 'bg-gray-100 text-gray-800'
+      '읽는 중': 'bg-blue-100 text-blue-800 border-blue-200',
+      '완료': 'bg-green-100 text-green-800 border-green-200',
+      '미시작': 'bg-gray-100 text-gray-800 border-gray-200'
     }[book.status];
+
+    const statusIcon = {
+      '읽는 중': '📖',
+      '완료': '✅',
+      '미시작': '📚'
+    }[book.status];
+
+    // 원서 삭제 핸들러
+    const handleDelete = (e) => {
+      e.stopPropagation();
+      if (window.confirm('정말 이 원서를 삭제하시겠습니까?\n\n삭제된 원서는 복구할 수 없습니다.')) {
+        try {
+          // StudyContext의 deleteTextbook 함수 사용
+          deleteTextbook(book.id);
+          
+          // 청크 데이터 삭제 (있는 경우)
+          if (book.file && book.file.isChunked && book.file.totalChunks) {
+            console.log('청크 데이터 삭제 시작:', {
+              bookId: book.id,
+              totalChunks: book.file.totalChunks
+            });
+            
+            for (let i = 0; i < book.file.totalChunks; i++) {
+              const chunkKey = `textbook_${book.id}_chunk_${i}`;
+              localStorage.removeItem(chunkKey);
+              console.log('청크 삭제:', chunkKey);
+            }
+            
+            console.log('청크 데이터 삭제 완료');
+          }
+          
+          // 성공 메시지
+          alert('원서가 성공적으로 삭제되었습니다.');
+          
+        } catch (error) {
+          console.error('원서 삭제 중 오류:', error);
+          alert('원서 삭제 중 오류가 발생했습니다.');
+        }
+      }
+    };
 
     return (
       <div 
-        className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
+        className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 overflow-hidden hover:border-blue-200"
         onClick={() => openBookDetail(book)}
       >
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center space-x-2">
-            <Book className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">{book.title}</h3>
+        {/* 상단 이미지 영역 */}
+        <div className="relative h-48 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
+          <div className="relative z-10 text-center">
+            <div className="text-4xl mb-2">📚</div>
+            <div className="text-xs text-gray-600 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1">
+              {book.publisher}
+            </div>
           </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusColor}`}>
+          {/* 상태 배지 */}
+          <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
+            <span className="mr-1">{statusIcon}</span>
             {book.status}
-          </span>
+          </div>
+          {/* 삭제 버튼 */}
+          <button
+            className="absolute top-3 left-3 bg-red-100 text-red-600 rounded-full px-2 py-1 text-xs font-semibold shadow hover:bg-red-200 transition"
+            onClick={handleDelete}
+            title="원서 삭제"
+          >
+            삭제
+          </button>
         </div>
-        <p className="text-gray-600 text-sm mb-2">{book.author}</p>
-        <div className="mb-2 text-xs text-gray-500">{book.publisher}</div>
-        <div className="mb-2 text-xs text-gray-500">목표일: {formatDate(book.targetDate)}</div>
-        <div className="mb-2 text-xs text-gray-500">누적: {book.currentPage}/{book.totalPages}p ({progressPercentage}%)</div>
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-          <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${progressPercentage}%` }}></div>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <span>남은 일수: {getDaysRemaining(book.targetDate)}일</span>
-          <span>일일 권장: {recommendedPages}p</span>
-        </div>
-      </div>
-    );
-  };
 
-  const BookDetail = ({ book }) => {
-    if (!book) return null;
-    const progressPercentage = getProgressPercentage(book.currentPage, book.totalPages);
-    return (
-      <div className={`fixed top-0 right-0 h-full w-full md:w-1/2 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
-        isDetailOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}>
-        <div className="h-full overflow-y-auto">
-          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-900">{book.title}</h2>
-            <Button 
-              onClick={closeBookDetail}
-              variant="ghost"
-              size="sm"
-              className="p-2 hover:bg-gray-100 rounded-full"
+        {/* 콘텐츠 영역 */}
+        <div className="p-6">
+          {/* 제목과 저자 */}
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors" title={book.title}>
+              {getShortTitle(book.title)}
+            </h3>
+            <p className="text-sm text-gray-600 flex items-center">
+              <span className="mr-2">✍️</span>
+              {book.author}
+            </p>
+          </div>
+
+          {/* 진행률 */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">진행률</span>
+              <span className="text-sm text-gray-500">{progressPercentage}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                style={{ width: `${progressPercentage}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>{book.currentPage}p</span>
+              <span>{book.totalPages}p</span>
+            </div>
+          </div>
+
+          {/* 학습 정보 */}
+          <div className="space-y-2 mb-4">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">목표일</span>
+              <span className="font-medium text-gray-700">{formatDate(book.targetDate)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">남은 일수</span>
+              <span className={`font-medium ${getDaysRemaining(book.targetDate) < 7 ? 'text-red-600' : 'text-gray-700'}`}>
+                {getDaysRemaining(book.targetDate)}일
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">일일 권장</span>
+              <span className="font-medium text-blue-600">{recommendedPages}p</span>
+            </div>
+          </div>
+
+          {/* 액션 버튼 */}
+          <div className="flex gap-2">
+            <button 
+              className="flex-1 bg-blue-50 text-blue-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                openBookDetail(book);
+              }}
             >
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
-          <div className="p-6 space-y-6">
-            {/* 기본 정보 */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold mb-2">📋 기본 정보</h3>
-              <p className="text-gray-700 mb-2">{book.author} | {book.publisher}</p>
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
-                <span>총 {book.totalPages}p</span>
-                <span>목표일: {formatDate(book.targetDate)}</span>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  book.status === '완료' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {book.status}
-                </span>
-              </div>
-            </div>
-            {/* 진도/노트 */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-gray-500">누적: {book.currentPage}/{book.totalPages}p</span>
-                <span className="text-xs text-gray-500">({progressPercentage}%)</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${progressPercentage}%` }}></div>
-              </div>
-              <h4 className="font-semibold text-sm mb-1">노트</h4>
-              <ul className="space-y-2">
-                {book.notes.map(note => (
-                  <li key={note.id} className="bg-white rounded p-3 border border-gray-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <FileText className="w-4 h-4 text-blue-500" />
-                      <span className="text-xs text-gray-700">{note.pageRange}p</span>
-                      <span className="text-xs text-gray-400 ml-2">{note.date}</span>
-                    </div>
-                    <div className="text-sm text-gray-800 mb-1 whitespace-pre-line">{note.content}</div>
-                    <div className="flex flex-wrap gap-1">
-                      {note.keywords.map((kw, i) => (
-                        <span key={i} className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">#{kw}</span>
-                      ))}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            {/* 독서 기록 추가 */}
-            <div className="mt-4">
-              <h4 className="font-semibold text-sm mb-2">독서 기록 추가</h4>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="number"
-                  placeholder="시작 페이지"
-                  value={newReadingLog.startPage}
-                  onChange={e => setNewReadingLog(prev => ({ ...prev, startPage: e.target.value }))}
-                  className="w-1/4 px-2 py-1 border border-gray-300 rounded text-xs"
-                />
-                <input
-                  type="number"
-                  placeholder="종료 페이지"
-                  value={newReadingLog.endPage}
-                  onChange={e => setNewReadingLog(prev => ({ ...prev, endPage: e.target.value }))}
-                  className="w-1/4 px-2 py-1 border border-gray-300 rounded text-xs"
-                />
-                <input
-                  type="text"
-                  placeholder="노트"
-                  value={newReadingLog.note}
-                  onChange={e => setNewReadingLog(prev => ({ ...prev, note: e.target.value }))}
-                  className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
-                />
-                <input
-                  type="text"
-                  placeholder="키워드(,로 구분)"
-                  value={newReadingLog.keywords}
-                  onChange={e => setNewReadingLog(prev => ({ ...prev, keywords: e.target.value }))}
-                  className="w-1/4 px-2 py-1 border border-gray-300 rounded text-xs"
-                />
-                <Button
-                  onClick={() => addReadingLog(book.id)}
-                  variant="primary"
-                  size="sm"
-                >
-                  추가
-                </Button>
-              </div>
-            </div>
-            {/* 독서 이력 */}
-            <div className="mt-4">
-              <h4 className="font-semibold text-sm mb-2">독서 이력</h4>
-              <ul className="space-y-1">
-                {book.readingHistory.map((log, i) => (
-                  <li key={i} className="text-xs text-gray-600">
-                    {log.date}: {log.startPage}~{log.endPage} ({log.pagesRead}p)
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+              📖 읽기
+            </button>
+            <button 
+              className="flex-1 bg-gray-50 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                // 노트 보기 기능
+              }}
+            >
+              📝 노트
+            </button>
+        </div>
         </div>
       </div>
     );
   };
 
-  const handleFileChange = (file) => {
-    setAddBookFile(file);
-    if (file && file.name) {
-      const nameParts = file.name.replace(/\.[^/.]+$/, '').split('-');
-      setNewBook(prev => ({
-        ...prev,
-        title: nameParts[0] || '',
-        publisher: nameParts[1] || '',
-        totalPages: nameParts[2] ? parseInt(nameParts[2].replace(/[^0-9]/g, '')) : ''
-      }));
+  // 전체 원서 삭제 핸들러
+  const handleDeleteAll = () => {
+    try {
+      console.log('즉시 정리 시작');
+      
+      // localStorage 완전 초기화
+      localStorage.clear();
+      console.log('localStorage 완전 초기화 완료');
+      
+      // 상태 업데이트
+      setBooks([]);
+      
+      console.log('즉시 정리 완료');
+      alert('모든 데이터가 즉시 정리되었습니다.\nlocalStorage가 완전히 초기화되었습니다.');
+      
+    } catch (error) {
+      console.error('즉시 정리 중 오류:', error);
+      alert('즉시 정리 중 오류가 발생했습니다.');
     }
   };
 
-  const handleDateChange = (e) => {
-    const { name, value } = e.target;
-    setAddBookDates(prev => ({ ...prev, [name]: value }));
-    if (name === 'end' && addBookDates.start) {
-      const start = new Date(addBookDates.start);
-      const end = new Date(value);
-      const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-      setAddBookDaysLeft(diff);
-    } else if (name === 'start' && addBookDates.end) {
-      const start = new Date(value);
-      const end = new Date(addBookDates.end);
-      const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-      setAddBookDaysLeft(diff);
+  // localStorage 정리 (고아 청크 데이터 삭제)
+  const cleanupOrphanedChunks = () => {
+    try {
+      console.log('고아 청크 데이터 정리 시작');
+      
+      // 현재 원서 ID 목록
+      const savedBooks = JSON.parse(localStorage.getItem('textbooks') || '[]');
+      const bookIds = savedBooks.map(book => book.id);
+      
+      // 모든 localStorage 키 확인
+      const allKeys = Object.keys(localStorage);
+      const chunkKeys = allKeys.filter(key => key.startsWith('textbook_') && key.includes('chunk_'));
+      
+      // 고아 청크 찾기 및 삭제
+      let deletedCount = 0;
+      chunkKeys.forEach(key => {
+        const match = key.match(/textbook_(\d+)_chunk_(\d+)/);
+        if (match) {
+          const bookId = parseInt(match[1]);
+          if (!bookIds.includes(bookId)) {
+            localStorage.removeItem(key);
+            deletedCount++;
+            console.log('고아 청크 삭제:', key);
+          }
+        }
+      });
+      
+      console.log(`고아 청크 ${deletedCount}개 삭제 완료`);
+      return deletedCount;
+      
+    } catch (error) {
+      console.error('고아 청크 정리 중 오류:', error);
+      return 0;
     }
-  };
-
-  // 학습 강도 옵션 및 샘플 플랜 데이터 통일
-  const intensityOptions = ['낮음', '보통', '높음'];
-  const samplePlans = {
-    '낮음': [
-      { week: 1, task: '1~2장 읽기', date: '', done: false, memo: '' },
-      { week: 2, task: '3~4장 읽기', date: '', done: false, memo: '' },
-    ],
-    '보통': [
-      { week: 1, task: '1~3장 읽기', date: '', done: false, memo: '' },
-      { week: 2, task: '4~6장 읽고 문제풀이', date: '', done: false, memo: '' },
-      { week: 3, task: '7~9장 + 복습', date: '', done: false, memo: '' },
-    ],
-    '높음': [
-      { week: 1, task: '1~5장 읽기', date: '', done: false, memo: '' },
-      { week: 2, task: '6~10장 읽기', date: '', done: false, memo: '' },
-      { week: 3, task: '11~15장 읽기', date: '', done: false, memo: '' },
-      { week: 4, task: '16~20장 읽기', date: '', done: false, memo: '' },
-    ],
-  };
-
-  // 2단계에서 플랜 생성
-  const handleGeneratePlan = () => {
-    setPlanTasks(samplePlans[studyIntensity]);
-  };
-
-  // 저장 시 books에 목적/강도/플랜도 함께 저장, 상세페이지로 이동
-  const handleAddBook = () => {
-    if (!addBookFile || !newBook.title || !newBook.totalPages || !addBookDates.start || !addBookDates.end || !studyPurpose || planTasks.length === 0) {
-      setToastMessage('모든 필드와 플랜을 입력해주세요!');
-      setToastType('error');
-      setShowToast(true);
-      return;
-    }
-    const newBookObj = {
-      id: Date.now(),
-      title: newBook.title,
-      author: newBook.author,
-      publisher: newBook.publisher,
-      totalPages: parseInt(newBook.totalPages),
-      currentPage: 0,
-      targetDate: addBookDates.end,
-      status: '읽는 중',
-      startDate: addBookDates.start,
-      notes: [],
-      readingHistory: [],
-      file: addBookFile,
-      daysLeft: addBookDaysLeft,
-      purpose: studyPurpose,
-      intensity: studyIntensity,
-      plan: planTasks,
-    };
-    setBooks([...books, newBookObj]);
-    setShowAddModal(false);
-    setToastMessage('새 원서가 추가되었습니다!');
-    setToastType('success');
-    setShowToast(true);
-    setNewBook({ title: '', author: '', publisher: '', totalPages: '', targetDate: '', status: '읽는 중', startDate: '', currentPage: 0 });
-    setAddBookFile(null);
-    setAddBookDates({ start: '', end: '' });
-    setAddBookDaysLeft(null);
-    setStudyPurpose('');
-    setStudyIntensity('보통');
-    setPlanTasks([]);
-    setSelectedBook(newBookObj);
-    setIsDetailOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* 해더 */}
-      <div className="w-full bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 mb-0">
-        <div className="max-w mx-auto px-4 py-2 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">원서 관리</h1>
-            <p className="text-sm text-gray-600">진행 중인 원서들을 한눈에 관리하세요!</p>
+      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-20 shadow-sm">
+        <div className="max-w mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+              <Book size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                원서 관리
+              </h1>
+              <p className="text-xs text-slate-600 mt-0.5">진행 중인 원서들을 한눈에 관리하세요!</p>
+            </div>
           </div>
-          <Button onClick={() => setShowAddModal(true)} icon={<Plus />}>새 원서</Button>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-50/80 backdrop-blur px-3 py-2 rounded-lg border border-slate-200/50">
+              <Library size={16} className="text-blue-500" />
+              <span className="text-xs text-slate-600">총 {books.length}권</span>
+            </div>
+            
+            {/* 정리 버튼 */}
+            <button 
+              className="px-3 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-all duration-300 flex items-center gap-2 text-sm font-medium"
+              onClick={() => {
+                const deletedCount = cleanupOrphanedChunks();
+                if (deletedCount > 0) {
+                  alert(`${deletedCount}개의 고아 청크 데이터가 정리되었습니다.`);
+                } else {
+                  alert('정리할 고아 데이터가 없습니다.');
+                }
+              }}
+              title="고아 청크 데이터 정리"
+            >
+              🧹 정리
+            </button>
+            
+            {/* 즉시 정리 버튼 */}
+            <button 
+              className="px-3 py-2.5 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all duration-300 flex items-center gap-2 text-sm font-medium"
+              onClick={handleDeleteAll}
+              title="모든 데이터 즉시 정리"
+            >
+              🗑️ 즉시 정리
+            </button>
+            
+            <button 
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-700 transition-all duration-300 flex items-center gap-2 font-medium"
+              onClick={openAddBookPage}
+            >
+              <Plus size={18} /> 새 원서
+            </button>
+          </div>
         </div>
       </div>
+      
       {/* 메인 컨테이너 */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-8">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
           {/* 필터 */}
-          <div className="mb-6 flex gap-2 flex-wrap">
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-sm font-medium text-gray-700">상태별 필터:</span>
+            </div>
+            <div className="flex gap-3 flex-wrap">
             {['전체', '읽는 중', '완료', '미시작'].map(status => (
-              <Button
+                <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                variant={filterStatus === status ? 'primary' : 'ghost'}
-                size="sm"
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                    filterStatus === status 
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:border-blue-300'
+                  }`}
               >
                 {status}
-              </Button>
+                </button>
             ))}
+            </div>
           </div>
+          
           {/* 원서 카드 리스트 */}
           {filteredBooks.length === 0 ? (
-            <div className="text-center text-gray-400 py-12">아직 등록된 원서가 없습니다.</div>
+            <div className="text-center py-16">
+              <div className="text-6xl mb-4">📚</div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">아직 등록된 원서가 없습니다</h3>
+              <p className="text-gray-500 mb-6">첫 번째 원서를 추가하고 학습을 시작해보세요!</p>
+              <Button 
+                onClick={openAddBookPage}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              >
+                첫 원서 추가하기
+              </Button>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredBooks.map(book => (
                 <BookCard key={book.id} book={book} />
               ))}
             </div>
           )}
-          {/* 원서 상세 슬라이드 */}
-          {selectedBook && (
-            <div className="mt-8">
-              <BookDetail book={selectedBook} />
-            </div>
-          )}
-          {/* 새 원서 추가 모달 */}
-          <Modal open={showAddModal} onClose={() => { setShowAddModal(false); setAddStep(1); }} title="새 원서 추가">
-            <div className="flex flex-col gap-4 w-full max-w-md mx-auto">
-              {addStep === 1 && (
-                <>
-                  <FileUpload
-                    onFileChange={handleFileChange}
-                    accept="application/pdf,image/*"
-                    label="전공 원서 파일 업로드 (PDF, 이미지 등)"
-                  />
-                  <div className="flex flex-col gap-2">
-                    <label className="font-semibold">원서 이름</label>
-                    <input
-                      className="border rounded px-3 py-2"
-                      value={newBook.title}
-                      onChange={e => setNewBook(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="예: Operating Systems"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="font-semibold">출판사</label>
-                    <input
-                      className="border rounded px-3 py-2"
-                      value={newBook.publisher}
-                      onChange={e => setNewBook(prev => ({ ...prev, publisher: e.target.value }))}
-                      placeholder="예: MIT Press"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="font-semibold">페이지 수</label>
-                    <input
-                      className="border rounded px-3 py-2"
-                      type="number"
-                      value={newBook.totalPages}
-                      onChange={e => setNewBook(prev => ({ ...prev, totalPages: e.target.value }))}
-                      placeholder="예: 400"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="font-semibold">기간 설정</label>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="date"
-                        name="start"
-                        className="border rounded px-3 py-2"
-                        value={addBookDates.start}
-                        onChange={handleDateChange}
-                      />
-                      <span>~</span>
-                      <input
-                        type="date"
-                        name="end"
-                        className="border rounded px-3 py-2"
-                        value={addBookDates.end}
-                        onChange={handleDateChange}
-                      />
-                    </div>
-                    {addBookDaysLeft !== null && (
-                      <div className="text-xs text-gray-500 mt-1">남은 일수: {addBookDaysLeft}일</div>
-                    )}
-                  </div>
-                  <Button onClick={() => setAddStep(2)} className="mt-4 w-full">다음</Button>
-                </>
-              )}
-              {addStep === 2 && (
-                <>
-                  <div className="flex flex-col gap-2">
-                    <label className="font-semibold">학습 목적</label>
-                    <input
-                      className="border rounded px-3 py-2"
-                      value={studyPurpose}
-                      onChange={e => setStudyPurpose(e.target.value)}
-                      placeholder="예: 전공 심화, 자격증 대비 등"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="font-semibold">학습 강도</label>
-                    <select
-                      className="border rounded px-3 py-2"
-                      value={studyIntensity}
-                      onChange={e => setStudyIntensity(e.target.value)}
-                    >
-                      {intensityOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <AIPlanGenerator
-                    studyIntensity={studyIntensity}
-                    onGenerate={handleGeneratePlan}
-                    planTasks={planTasks}
-                    setPlanTasks={setPlanTasks}
-                  />
-                  <div className="flex gap-2 mt-4">
-                    <Button onClick={() => setAddStep(1)} variant="secondary" className="flex-1">이전</Button>
-                    <Button onClick={handleAddBook} className="flex-1" disabled={planTasks.length === 0}>저장</Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </Modal>
-          {/* Toast 알림 */}
-          <Toast open={showToast} onClose={() => setShowToast(false)} type={toastType}>{toastMessage}</Toast>
         </div>
       </div>
     </div>

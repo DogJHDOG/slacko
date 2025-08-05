@@ -13,7 +13,7 @@ export default function DeadlineSection({ upcomingDeadlines, getDaysUntilDeadlin
       <div className="p-6">
         <div className="space-y-4">
           {upcomingDeadlines.map((deadline) => {
-            const daysLeft = getDaysUntilDeadline(deadline.date);
+            const daysLeft = getDaysUntilDeadline(deadline.dueDate);
             const isUrgent = daysLeft <= 3;
             return (
               <div key={deadline.id} className={`p-3 rounded-lg border ${isUrgent ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -24,7 +24,7 @@ export default function DeadlineSection({ upcomingDeadlines, getDaysUntilDeadlin
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">{new Date(deadline.date).toLocaleDateString()}</span>
+                  <span className="text-gray-600">{new Date(deadline.dueDate).toLocaleDateString()}</span>
                   <span className={`font-medium ${isUrgent ? 'text-red-600' : 'text-orange-600'}`}>
                     D-{daysLeft}
                   </span>

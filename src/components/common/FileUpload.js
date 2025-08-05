@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function FileUpload({
   onFileChange,
@@ -6,6 +7,7 @@ export default function FileUpload({
   label = '파일을 업로드하세요',
   multiple = false,
   style = {},
+  isAnalyzing = false,
 }) {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -51,7 +53,7 @@ export default function FileUpload({
 
   return (
     <div
-      className={`w-full flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 transition-colors duration-200 ${dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white'} cursor-pointer`}
+      className={`w-full flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 transition-colors duration-200 ${dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white'} cursor-pointer relative`}
       style={style}
       tabIndex={0}
       role="button"
@@ -71,6 +73,16 @@ export default function FileUpload({
         onChange={handleFileChange}
         tabIndex={-1}
       />
+      
+      {/* 분석 중 오버레이 */}
+      {isAnalyzing && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg z-10">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
+          <span className="text-sm font-medium text-blue-600">PDF 파일 분석 중...</span>
+          <span className="text-xs text-gray-500 mt-1">저자 및 페이지 수를 추출하고 있습니다</span>
+        </div>
+      )}
+      
       <div className="flex flex-col items-center gap-2">
         {previewUrl ? (
           <img src={previewUrl} alt="미리보기" className="w-32 h-32 object-contain rounded shadow" />
