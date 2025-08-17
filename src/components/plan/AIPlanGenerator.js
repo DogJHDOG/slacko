@@ -12,7 +12,7 @@ export default function AIPlanGenerator({ studyIntensity, onGenerate, planTasks,
     const newTask = {
       week: planTasks.length + 1,
       task: '',
-      date: '',
+      date: getDateForWeek(planTasks.length + 1), // 날짜 자동 생성
       done: false,
       memo: ''
     };
@@ -24,30 +24,38 @@ export default function AIPlanGenerator({ studyIntensity, onGenerate, planTasks,
     setPlanTasks(prev => prev.filter((_, i) => i !== idx));
   };
 
+  // 주차별 날짜 계산 함수
+  const getDateForWeek = (week) => {
+    const start = new Date();
+    start.setDate(start.getDate() + (week - 1) * 7);
+    return start.toISOString().split('T')[0];
+  };
+
   // 학습 강도별 추천 플랜 템플릿
   const getRecommendedPlan = () => {
     const templates = {
       '낮음': [
-        { week: 1, task: '1~2장 읽기 및 핵심 개념 정리', date: '', done: false, memo: '천천히 이해하며 읽기' },
-        { week: 2, task: '3~4장 읽기 및 예제 풀이', date: '', done: false, memo: '실습 위주로 학습' },
-        { week: 3, task: '5~6장 읽기 및 복습', date: '', done: false, memo: '이전 내용과 연결' },
+        { week: 1, task: '1~2장 읽기 및 핵심 개념 정리', date: getDateForWeek(1), done: false, memo: '천천히 이해하며 읽기' },
+        { week: 2, task: '3~4장 읽기 및 예제 풀이', date: getDateForWeek(2), done: false, memo: '실습 위주로 학습' },
+        { week: 3, task: '5~6장 읽기 및 복습', date: getDateForWeek(3), done: false, memo: '이전 내용과 연결' },
       ],
       '보통': [
-        { week: 1, task: '1~3장 읽기 및 개념 정리', date: '', done: false, memo: '기초 개념 확립' },
-        { week: 2, task: '4~6장 읽기 및 문제풀이', date: '', done: false, memo: '실습과 이론 병행' },
-        { week: 3, task: '7~9장 읽기 및 복습', date: '', done: false, memo: '전체적인 흐름 파악' },
-        { week: 4, task: '10~12장 읽기 및 심화 학습', date: '', done: false, memo: '심화 개념 도전' },
+        { week: 1, task: '1~3장 읽기 및 개념 정리', date: getDateForWeek(1), done: false, memo: '기초 개념 확립' },
+        { week: 2, task: '4~6장 읽기 및 문제풀이', date: getDateForWeek(2), done: false, memo: '실습과 이론 병행' },
+        { week: 3, task: '7~9장 읽기 및 복습', date: getDateForWeek(3), done: false, memo: '전체적인 흐름 파악' },
+        { week: 4, task: '10~12장 읽기 및 심화 학습', date: getDateForWeek(4), done: false, memo: '심화 개념 도전' },
       ],
       '높음': [
-        { week: 1, task: '1~5장 읽기 및 개념 정리', date: '', done: false, memo: '빠른 진도로 기초 확립' },
-        { week: 2, task: '6~10장 읽기 및 문제풀이', date: '', done: false, memo: '실습과 이론 병행' },
-        { week: 3, task: '11~15장 읽기 및 심화 학습', date: '', done: false, memo: '고급 개념 도전' },
-        { week: 4, task: '16~20장 읽기 및 종합 복습', date: '', done: false, memo: '전체 내용 통합' },
-        { week: 5, task: '21~25장 읽기 및 실전 연습', date: '', done: false, memo: '실전 문제 풀이' },
+        { week: 1, task: '1~5장 읽기 및 개념 정리', date: getDateForWeek(1), done: false, memo: '빠른 진도로 기초 확립' },
+        { week: 2, task: '6~10장 읽기 및 문제풀이', date: getDateForWeek(2), done: false, memo: '실습과 이론 병행' },
+        { week: 3, task: '11~15장 읽기 및 심화 학습', date: getDateForWeek(3), done: false, memo: '고급 개념 도전' },
+        { week: 4, task: '16~20장 읽기 및 종합 복습', date: getDateForWeek(4), done: false, memo: '전체 내용 통합' },
+        { week: 5, task: '21~25장 읽기 및 실전 연습', date: getDateForWeek(5), done: false, memo: '실전 문제 풀이' },
       ],
     };
     return templates[studyIntensity] || templates['보통'];
   };
+
 
   return (
     <div className="flex flex-col gap-4">

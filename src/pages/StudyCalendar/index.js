@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, BookOpen, Code, RotateCcw, Flag, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, BookOpen, Code, RotateCcw, Flag, AlertCircle, Search, TrendingUp, Target } from 'lucide-react';
 import { useProjectContext } from '../../context/ProjectContext';
 import { useStudyContext } from '../../context/StudyContext';
 import { getCurrentDate, formatDate as formatDateUtil, isToday as isTodayUtil } from '../../utils/dateUtils';
@@ -15,6 +15,8 @@ const StudyCalendar = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEvents, setSelectedEvents] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('전체');
 
   // 이벤트 타입 설정
   const eventTypes = {
@@ -97,20 +99,20 @@ const StudyCalendar = () => {
           
           // 작업 기간 동안 매일 이벤트 생성
           for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          projectEvents.push({
+            projectEvents.push({
               id: `task-${task.id}-${d.toISOString().split('T')[0]}`,
-            title: `${project.name}: ${task.title}`,
+              title: `${project.name}: ${task.title}`,
               type: 'project',
               date: d.toISOString().split('T')[0],
-            time: '',
-            duration: 0,
+              time: '',
+              duration: 0,
               repeat: 'daily',
               memo: task.description || '',
-            completed: task.status === 'completed',
-            projectColor: project.color,
-            projectIcon: project.icon,
-            priority: task.priority
-          });
+              completed: task.status === 'completed',
+              projectColor: project.color,
+              projectIcon: project.icon,
+              priority: task.priority
+            });
           }
         }
       });
@@ -410,7 +412,22 @@ const StudyCalendar = () => {
     setSelectedEvents([]);
   };
 
-  // 일정 추가/수정/삭제 기능 제거 - 기존 데이터만 표시
+  // 검색 및 필터링
+  // const filteredEvents = allEvents.filter(event => {
+  //   const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase());
+  //   const matchesFilter = filterType === '전체' || eventTypes[event.type]?.label === filterType;
+  //   return matchesSearch && matchesFilter;
+  // });
+
+  // 통계 데이터
+  const stats = {
+    total: allEvents.length,
+    today: getEventsForDate(new Date()).length,
+    study: allEvents.filter(e => e.type === 'study').length,
+    reading: allEvents.filter(e => e.type === 'reading').length,
+    project: allEvents.filter(e => e.type === 'project').length,
+    deadline: allEvents.filter(e => e.type === 'deadline').length
+  };
 
   // 월간 보기 렌더링
   const renderMonthView = () => {
@@ -436,10 +453,10 @@ const StudyCalendar = () => {
               return (
                 <div 
                   key={dayIndex}
-                   className={`min-h-24 p-2 border-r last:border-r-0 cursor-pointer hover:bg-gray-50 transition-colors ${
+                  className={`min-h-24 p-2 border-r last:border-r-0 cursor-pointer hover:bg-gray-50 transition-colors ${
                     !isCurrentMonth ? 'bg-gray-50 text-gray-400' : ''
                   }`}
-                   onClick={() => handleDateClick(date)}
+                  onClick={() => handleDateClick(date)}
                 >
                   <div className={`text-sm font-medium mb-1 ${
                     isToday ? 'bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center' : ''
@@ -448,7 +465,7 @@ const StudyCalendar = () => {
                   </div>
                   
                   <div className="space-y-1">
-                     {dayEvents.slice(0, 3).map(event => {
+                    {dayEvents.slice(0, 3).map(event => {
                       const typeConfig = eventTypes[event.type];
                       const Icon = typeConfig.icon;
                       
@@ -469,9 +486,9 @@ const StudyCalendar = () => {
                         </div>
                       );
                     })}
-                     {dayEvents.length > 3 && (
+                    {dayEvents.length > 3 && (
                       <div className="text-xs text-gray-500">
-                         +{dayEvents.length - 3}개 더
+                        +{dayEvents.length - 3}개 더
                       </div>
                     )}
                   </div>
@@ -515,10 +532,10 @@ const StudyCalendar = () => {
               {hour}:00
             </div>
             {weekDays.map((date, dayIndex) => {
-                const dayEvents = getEventsForDate(date);
-                // 시간대별 필터링 (시간이 있는 일정만 해당 시간대에 표시)
-                const timeFilteredEvents = dayEvents.filter(event => {
-                  if (!event.time) return true; // 시간이 없는 일정은 모든 시간대에 표시
+              const dayEvents = getEventsForDate(date);
+              // 시간대별 필터링 (시간이 있는 일정만 해당 시간대에 표시)
+              const timeFilteredEvents = dayEvents.filter(event => {
+                if (!event.time) return true; // 시간이 없는 일정은 모든 시간대에 표시
                 const eventHour = parseInt(event.time?.split(':')[0] || '0');
                 return eventHour === hour;
               });
@@ -527,9 +544,9 @@ const StudyCalendar = () => {
                 <div 
                   key={dayIndex}
                   className="p-1 border-r last:border-r-0 cursor-pointer hover:bg-gray-50"
-                   onClick={() => handleDateClick(date)}
+                  onClick={() => handleDateClick(date)}
                 >
-                   {timeFilteredEvents.map(event => {
+                  {timeFilteredEvents.map(event => {
                     const typeConfig = eventTypes[event.type];
                     const Icon = typeConfig.icon;
                     
@@ -550,11 +567,11 @@ const StudyCalendar = () => {
                       </div>
                     );
                   })}
-                   {timeFilteredEvents.length === 0 && (
-                     <div className="text-xs text-gray-400 text-center py-1">
-                       -
-                     </div>
-                   )}
+                  {timeFilteredEvents.length === 0 && (
+                    <div className="text-xs text-gray-400 text-center py-1">
+                      -
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -578,7 +595,6 @@ const StudyCalendar = () => {
               {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월 {currentDate.getDate()}일
               {isToday && <span className="ml-2 text-sm bg-blue-500 text-white px-2 py-1 rounded">오늘</span>}
             </h3>
-
           </div>
         </div>
         
@@ -597,13 +613,13 @@ const StudyCalendar = () => {
                 return (
                   <div 
                     key={event.id}
-                     className={`p-4 rounded-lg border-l-4 cursor-pointer hover:bg-gray-100 transition-colors ${
+                    className={`p-4 rounded-lg border-l-4 cursor-pointer hover:bg-gray-100 transition-colors ${
                       event.projectColor ? 'border-l-4' : typeConfig.color.replace('bg-', 'border-')
                     } bg-gray-50 ${
                       event.completed ? 'opacity-60' : ''
                     }`}
                     style={event.projectColor ? { borderLeftColor: event.projectColor } : {}}
-                     onClick={() => handleDateClick(currentDate)}
+                    onClick={() => handleDateClick(currentDate)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -656,104 +672,179 @@ const StudyCalendar = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* 해더 - 카드 바깥 */}
-      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-20 shadow-sm">
-        <div className="max-w mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl shadow-lg">
-              <Calendar size={24} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
-                학습 캘린더
-              </h1>
-              <p className="text-xs text-slate-600 mt-0.5">체계적인 일정 관리로 학습 효과를 극대화하세요</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-50/80 backdrop-blur px-3 py-2 rounded-lg border border-slate-200/50">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-slate-600">오늘 {getEventsForDate(new Date()).length}개 일정</span>
-            </div>
+    <div className="min-h-screen bg-slate-50">
+      {/* 사이드바 공간 (필요시 추가) */}
+      <div className="flex">
+        {/* 메인 콘텐츠 */}
+        <div className="flex-1">
+          {/* 상단 바 */}
+          <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                {/* 페이지 제목 */}
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">학습 캘린더</h1>
+                  <p className="text-sm text-slate-600 mt-0.5">체계적인 일정 관리로 학습 효과를 극대화하세요</p>
+                </div>
 
+                {/* 우측 액션 버튼들 */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setCurrentDate(new Date())}
+                    className="px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors flex items-center gap-1.5"
+                  >
+                    <Calendar size={16} />
+                    오늘
+                  </button>
+                </div>
+              </div>
+
+              {/* 통계 카드들 */}
+              <div className="grid grid-cols-4 gap-4 mt-6">
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-slate-100 rounded-lg">
+                      <Calendar size={20} className="text-slate-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+                      <div className="text-sm text-slate-500">전체 일정</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <TrendingUp size={20} className="text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-blue-900">{stats.today}</div>
+                      <div className="text-sm text-blue-600">오늘 일정</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                      <BookOpen size={20} className="text-emerald-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-emerald-900">{stats.study}</div>
+                      <div className="text-sm text-emerald-600">학습 일정</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Target size={20} className="text-orange-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-orange-900">{stats.project}</div>
+                      <div className="text-sm text-orange-600">프로젝트</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      
-      {/* 메인 카드 */}
-      <div className="max-w-7xl mx-auto px-6 py-6 pb-12">
-        <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-8">
-          {/* 캘린더 헤더/탭/네비게이션 등 */}
-          <div className="mb-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
+
+          {/* 컨트롤 바 */}
+          <div className="bg-white border-b border-slate-200 px-6 py-3">
+            <div className="flex items-center justify-between">
+              {/* 검색 & 필터 */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="일정 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {['전체', '학습', '독서', '프로젝트', '마감일', '코딩'].map(type => (
+                    <button
+                      key={type}
+                      onClick={() => setFilterType(type)}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        filterType === type 
+                          ? 'bg-slate-900 text-white' 
+                          : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 보기 모드 & 네비게이션 */}
               <div className="flex items-center gap-4">
+                {/* 날짜 네비게이션 */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => navigateDate(-1)}
-                    className="p-2 hover:bg-gray-200 rounded"
+                    className="p-2 hover:bg-slate-100 rounded-md transition-colors"
                   >
                     <ChevronLeft size={20} />
                   </button>
-                  <h2 className="text-xl font-semibold min-w-48 text-center">
+                  <h2 className="text-lg font-semibold min-w-48 text-center">
                     {view === 'month' && `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월`}
                     {view === 'week' && `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월 ${currentDate.getDate()}일 주`}
                     {view === 'day' && `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월 ${currentDate.getDate()}일`}
                   </h2>
                   <button
                     onClick={() => navigateDate(1)}
-                    className="p-2 hover:bg-gray-200 rounded"
+                    className="p-2 hover:bg-slate-100 rounded-md transition-colors"
                   >
                     <ChevronRight size={20} />
                   </button>
-                  <button
-                    onClick={() => setCurrentDate(new Date())}
-                    className="ml-2 px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded"
-                  >
-                    오늘
-                  </button>
                 </div>
-              </div>
-              {/* 보기 모드 선택 */}
-              <div className="flex bg-gray-200 rounded-lg p-1">
-                {[
-                  { key: 'month', label: '월간' },
-                  { key: 'week', label: '주간' },
-                  { key: 'day', label: '일간' }
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setView(key)}
-                    className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                      view === key 
-                        ? 'bg-white text-blue-600 shadow-sm' 
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+
+                {/* 보기 모드 선택 */}
+                <div className="flex bg-slate-100 rounded-lg p-1">
+                  {[
+                    { key: 'month', label: '월간' },
+                    { key: 'week', label: '주간' },
+                    { key: 'day', label: '일간' }
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setView(key)}
+                      className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                        view === key 
+                          ? 'bg-white text-slate-900 shadow-sm' 
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-          
-          {/* 캘린더 본체 */}
-          <div>
+
+          {/* 메인 콘텐츠 영역 */}
+          <div className="p-6">
             {view === 'month' && renderMonthView()}
             {view === 'week' && renderWeekView()}
             {view === 'day' && renderDayView()}
           </div>
         </div>
       </div>
-      
-       {/* 일정 상세 모달 */}
-       <EventDetailModal
-         isOpen={showEventModal}
-         onClose={handleCloseModal}
-         events={selectedEvents}
-         selectedDate={selectedDate}
-       />
+
+      {/* 일정 상세 모달 */}
+      <EventDetailModal
+        isOpen={showEventModal}
+        onClose={handleCloseModal}
+        events={selectedEvents}
+        selectedDate={selectedDate}
+      />
     </div>
   );
 };

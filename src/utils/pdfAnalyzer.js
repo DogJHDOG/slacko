@@ -54,6 +54,31 @@ const initDB = async () => {
 };
 
 /**
+ * PDF에서 목차(북마크) 정보 추출 - PDFTocExtractor 사용
+ */
+export const extractTableOfContents = async (pdf) => {
+  try {
+    console.log('📚 PDF 목차 추출 시작 (PDFTocExtractor 사용)');
+    
+    if (!pdf) {
+      console.error('❌ PDF 객체가 없습니다');
+      return [];
+    }
+
+    // PDFTocExtractor 모듈 사용
+    const { extractPDFTableOfContents } = await import('./PDFTocExtractor');
+    const toc = await extractPDFTableOfContents(pdf);
+    
+    console.log('✅ PDFTocExtractor로 목차 추출 완료:', toc.length, '개');
+    return toc;
+    
+  } catch (error) {
+    console.error('❌ PDF 목차 추출 실패:', error);
+    return [];
+  }
+};
+
+/**
  * PDF 파일을 IndexedDB에 저장합니다
  */
 export const savePDFToIndexedDB = async (id, file) => {
@@ -1031,188 +1056,6 @@ export const cleanupOrphanedChunks = () => {
 };
 
 /**
- * PDF에서 목차(북마크) 정보 추출 - 개선된 버전
- */
-export const extractTableOfContents = async (pdf) => {
-  try {
-    console.log('📚 PDF 목차 추출 시작');
-    
-    if (!pdf) {
-      console.log('❌ PDF 객체가 없습니다');
-      return [];
-    }
-    
-    // PDF의 북마크(목차) 정보 가져오기
-    const outline = await pdf.getOutline();
-    
-    if (!outline || outline.length === 0) {
-      console.log('📚 PDF에 북마크가 없습니다');
-      return [];
-    }
-    
-    console.log('📚 추출된 북마크:', outline);
-    
-    // 북마크를 목차 형태로 변환 (재귀적으로 처리)
-    const convertOutlineToToc = (items, level = 0) => {
-      return items.map((item, index) => {
-        // dest가 배열인 경우 첫 번째 요소가 페이지 참조
-        let pageNum = null;
-        if (item.dest) {
-          if (Array.isArray(item.dest)) {
-            // dest[0]이 페이지 참조 객체인 경우
-            if (typeof item.dest[0] === 'object' && item.dest[0].num !== undefined) {
-              pageNum = item.dest[0].num + 1; // PDF.js는 0부터 시작하므로 +1
-            } else if (typeof item.dest[0] === 'number') {
-              pageNum = item.dest[0] + 1;
-            }
-          } else if (typeof item.dest === 'string') {
-            // Named destination의 경우 처리 필요
-            console.log('Named destination 발견:', item.dest);
-          }
-        }
-        
-        const tocItem = {
-          id: `${level}-${index}`,
-          title: item.title || `목차 ${index + 1}`,
-          page: pageNum,
-          level: level,
-          children: []
-        };
-        
-        // 하위 항목이 있는 경우 재귀적으로 처리
-        if (item.items && item.items.length > 0) {
-          tocItem.children = convertOutlineToToc(item.items, level + 1);
-        }
-        
-        return tocItem;
-      });
-    };
-    
-    const tableOfContents = convertOutlineToToc(outline);
-    
-    console.log('📚 변환된 목차:', tableOfContents);
-    return tableOfContents;
-    
-  } catch (error) {
-    console.error('❌ PDF 목차 추출 실패:', error);
-    return [];
-  }
-};
-
-/**
- * PDF에서 구조적 정보(StructTree) 추출 시도 - 개선된 버전
- */
-export const extractStructTree = async (pdf) => {
-  try {
-    console.log('🌳 PDF 구조 트리 추출 시작');
-    
-    if (!pdf) {
-      console.log('❌ PDF 객체가 없습니다');
-      return [];
-    }
-    
-    // 첫 몇 페이지에서 제목 스타일 텍스트 추출로 목차 생성 시도
-    const extractedToc = await extractTocFromTextStructure(pdf);
-    
-    console.log('🌳 텍스트 구조에서 추출된 목차:', extractedToc);
-    return extractedToc;
-    
-  } catch (error) {
-    console.error('❌ PDF 구조 트리 추출 실패:', error);
-    return [];
-  }
-};
-
-/**
- * 텍스트 구조에서 목차 추출 (폰트 크기, 스타일 기반)
- */
-const extractTocFromTextStructure = async (pdf, maxPages = 10) => {
-  const toc = [];
-  let idCounter = 0;
-  
-  try {
-    const totalPages = Math.min(maxPages, pdf.numPages);
-    
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      
-      // 텍스트 항목들을 분석하여 제목 스타일 감지
-      const potentialHeaders = [];
-      
-      textContent.items.forEach((item, index) => {
-        const text = item.str.trim();
-        if (text.length < 3) return;
-        
-        // 폰트 크기와 스타일로 제목 후보 식별
-        const fontSize = item.transform ? item.transform[0] : 12;
-        const isBold = item.fontName && item.fontName.toLowerCase().includes('bold');
-        const y = item.transform ? item.transform[5] : 0;
-        
-        // 제목 패턴 매칭
-        const chapterPattern = /^(chapter|ch\.?|section|sec\.?|\d+\.?\d*)\s+(.+)/i;
-        const numberPattern = /^(\d+\.)+\s*(.+)/;
-        const headingPattern = /^[A-Z][A-Z\s]{2,}$/; // 모두 대문자인 경우
-        
-        if (fontSize > 14 || isBold || chapterPattern.test(text) || 
-            numberPattern.test(text) || headingPattern.test(text)) {
-          
-          let level = 0;
-          let title = text;
-          
-          // 레벨 결정
-          if (fontSize > 18) level = 0;
-          else if (fontSize > 16) level = 1;
-          else if (fontSize > 14) level = 2;
-          else if (isBold) level = 1;
-          
-          // 번호 패턴으로 레벨 조정
-          const numberMatch = text.match(/^(\d+\.)+/);
-          if (numberMatch) {
-            const dots = (numberMatch[0].match(/\./g) || []).length;
-            level = Math.min(dots - 1, 3);
-            title = text.replace(/^\d+\.+\s*/, '');
-          }
-          
-          potentialHeaders.push({
-            text: title,
-            level: level,
-            page: pageNum,
-            fontSize: fontSize,
-            isBold: isBold,
-            y: y
-          });
-        }
-      });
-      
-      // 잠재적 헤더를 목차에 추가
-      for (const header of potentialHeaders) {
-        const currentId = idCounter;
-        idCounter += 1;
-        toc.push({
-          id: currentId,
-          title: header.text,
-          page: header.page,
-          level: header.level,
-          children: []
-        });
-      }
-    }
-    
-    // 중복 제거 및 정렬
-    const uniqueToc = toc.filter((item, index, self) => 
-      index === self.findIndex(t => t.title === item.title && t.page === item.page)
-    );
-    
-    return uniqueToc.slice(0, 50); // 최대 50개 항목으로 제한
-    
-  } catch (error) {
-    console.error('텍스트 구조에서 목차 추출 실패:', error);
-    return [];
-  }
-};
-
-/**
  * PDF 썸네일 컴포넌트
  * 원서 상세 페이지에서 PDF 미리보기를 위한 컴포넌트
  */
@@ -1371,4 +1214,40 @@ export const PdfThumbnail = ({ pdfId, width = 192, height = 256, className = "" 
       </Document>
     </div>
   );
+};
+
+/**
+ * 디버깅을 위한 PDF 텍스트 덤프 함수 (개발용)
+ */
+export const debugPdfTextStructure = async (pdf, maxPages = 5) => {
+  console.log('🔍 PDF 텍스트 구조 디버깅 시작');
+  
+  for (let pageNum = 1; pageNum <= Math.min(maxPages, pdf.numPages); pageNum++) {
+    try {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      
+      console.log(`\n=== 페이지 ${pageNum} ===`);
+      
+      textContent.items.forEach((item, index) => {
+        const fontSize = Math.abs(item.transform[0]);
+        const isBold = (item.fontName || '').toLowerCase().includes('bold');
+        
+        console.log(`[${index}] "${item.str}" | 크기:${fontSize} | 폰트:${item.fontName} | Bold:${isBold}`);
+      });
+    } catch (error) {
+      console.error(`페이지 ${pageNum} 디버깅 실패:`, error);
+    }
+  }
+};
+
+// PDFTocExtractor의 함수들을 재내보내기 (편의성을 위해)
+export const extractFromPDFFile = async (file) => {
+  const { extractFromPDFFile } = await import('./PDFTocExtractor');
+  return extractFromPDFFile(file);
+};
+
+export const debugPDFStructure = async (pdf) => {
+  const { debugPDFStructure } = await import('./PDFTocExtractor');
+  return debugPDFStructure(pdf);
 };

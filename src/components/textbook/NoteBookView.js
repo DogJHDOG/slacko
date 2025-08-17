@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, BookOpen, Tag, Calendar, Plus, Save, X } from 'lucide-react';
 
-const NoteBookView = ({ textbookData, allNotes, setAllNotes, currentPage, highlights }) => {
+const NoteBookView = ({ textbookData, allNotes, setAllNotes, currentPage, highlights, tableOfContents }) => {
   const [page, setPage] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
@@ -13,6 +13,62 @@ const NoteBookView = ({ textbookData, allNotes, setAllNotes, currentPage, highli
     color: 'blue',
     tags: []
   });
+  
+  // 현재 페이지의 챕터 정보 찾기
+  const [currentPageInfo, setCurrentPageInfo] = useState("p" + currentPage);
+  
+  useEffect(() => {
+    // 목차 정보가 있을 경우 현재 페이지의 챕터 정보 찾기
+    if (tableOfContents && tableOfContents.length > 0) {
+      const chapterInfo = findChapterForPage(currentPage, tableOfContents);
+      if (chapterInfo) {
+        setCurrentPageInfo(`chap${chapterInfo.chapterNumber}.p${currentPage}`);
+      } else {
+        setCurrentPageInfo(`p${currentPage}`);
+      }
+    } else {
+      setCurrentPageInfo(`p${currentPage}`);
+    }
+    
+    // 새 노트의 페이지 업데이트
+    setNewNote(prev => ({ ...prev, page: currentPage }));
+  }, [currentPage, tableOfContents]);
+  
+  // 페이지에 해당하는 챕터 찾기 함수
+  const findChapterForPage = (page, toc) => {
+    if (!toc || !Array.isArray(toc) || toc.length === 0) return null;
+    
+    // 페이지에 해당하는 챕터 찾기 (역순으로 검색하여 가장 가까운 챕터 찾기)
+    let bestMatch = null;
+    
+    for (let i = 0; i < toc.length; i++) {
+      const item = toc[i];
+      
+      // 최상위 항목만 챕터로 간주 (level이 0인 항목)
+      if (item.level === 0 && item.page && item.page <= page) {
+        // 다음 챕터의 시작 페이지 찾기
+        let nextChapterPage = Number.MAX_SAFE_INTEGER;
+        for (let j = i + 1; j < toc.length; j++) {
+          if (toc[j].level === 0 && toc[j].page) {
+            nextChapterPage = toc[j].page;
+            break;
+          }
+        }
+        
+        // 현재 페이지가 이 챕터 범위에 속하는지 확인
+        if (page >= item.page && page < nextChapterPage) {
+          bestMatch = {
+            title: item.title,
+            page: item.page,
+            chapterNumber: item.chapterNumber || (i + 1),
+            id: item.id
+          };
+        }
+      }
+    }
+    
+    return bestMatch;
+  };
   
   // 실제 노트 데이터 사용
   const noteData = allNotes || [];
@@ -49,7 +105,12 @@ const NoteBookView = ({ textbookData, allNotes, setAllNotes, currentPage, highli
       tags: newNote.tags,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      type: 'note'
+      type: 'note',
+      date: new Date().toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
     };
 
     setAllNotes(prev => [...prev, noteToAdd]);
@@ -109,7 +170,7 @@ const NoteBookView = ({ textbookData, allNotes, setAllNotes, currentPage, highli
   
   if (!noteData || noteData.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto p-8">
+      <div className="w-full p-8">
         <div className="relative">
           {/* 노트북 커버 */}
           <div className="bg-gradient-to-b from-amber-50 to-amber-100 rounded-lg shadow-2xl border border-amber-200 p-12 text-center transform rotate-1">
@@ -167,7 +228,7 @@ const NoteBookView = ({ textbookData, allNotes, setAllNotes, currentPage, highli
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">페이지</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">페이지 ({currentPageInfo})</label>
                   <input
                     type="number"
                     value={newNote.page}
@@ -263,7 +324,7 @@ const NoteBookView = ({ textbookData, allNotes, setAllNotes, currentPage, highli
   const currentColor = colorMap[note.color] || colorMap.blue;
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="w-full p-6">
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Permanent+Marker&display=swap');
         
@@ -406,7 +467,9 @@ const NoteBookView = ({ textbookData, allNotes, setAllNotes, currentPage, highli
                 >
                   <BookOpen className="w-4 h-4" style={{ color: currentColor.accent }} />
                   <span className="text-sm font-bold handwritten" style={{ color: currentColor.ink }}>
-                    p.{note.page}
+                    {findChapterForPage(note.page, tableOfContents) 
+                      ? `chap${findChapterForPage(note.page, tableOfContents).chapterNumber}.p${note.page}` 
+                      : `p.${note.page}`}
                   </span>
                 </div>
               </div>

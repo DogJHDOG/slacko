@@ -1,44 +1,35 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
-import { Plus, Book, Library } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, BookOpen, Calendar, Target, TrendingUp, Sparkles, Trash2 } from 'lucide-react';
 import { useStudyContext } from '../../context/StudyContext';
 
 export default function TextbookManagement() {
   const navigate = useNavigate();
   const { textbooks, deleteTextbook } = useStudyContext();
   const [books, setBooks] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('전체');
 
   // 제목을 간단하게 표시하는 함수
   const getShortTitle = (title) => {
     if (!title) return '';
-    
-    // 파일명에서 추출된 긴 제목을 간단하게 처리
-    // 첫 번째 하이픈이나 대시 이전의 부분만 사용
     const shortTitle = title.split(/[-–—]/)[0].trim();
-    
-    // 25자 이상이면 "..." 추가
-    if (shortTitle.length > 25) {
-      return shortTitle.substring(0, 25) + '...';
+    if (shortTitle.length > 30) {
+      return shortTitle.substring(0, 30) + '...';
     }
-    
     return shortTitle;
   };
 
-  // 컴포넌트 마운트 시 StudyContext의 textbooks 데이터 사용
   useEffect(() => {
     setBooks(textbooks);
   }, [textbooks]);
 
-  const [filterStatus, setFilterStatus] = useState('전체');
-
   const openBookDetail = (book) => {
-    // 상세 페이지로 이동
     navigate(`/textbook/${book.id}`);
   };
 
   const openAddBookPage = () => {
-    // 새 원서 생성 페이지로 이동
     navigate('/textbook/add');
   };
 
@@ -66,52 +57,45 @@ export default function TextbookManagement() {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
+  // 검색 및 필터링
   const filteredBooks = books.filter(book => {
-    if (filterStatus === '전체') return true;
-    return book.status === filterStatus;
+    const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         book.author.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterStatus === '전체' || book.status === filterStatus;
+    return matchesSearch && matchesFilter;
   });
+
+  // 통계 데이터
+  const stats = {
+    total: books.length,
+    reading: books.filter(b => b.status === '읽는 중').length,
+    completed: books.filter(b => b.status === '완료').length,
+    notStarted: books.filter(b => b.status === '미시작').length
+  };
 
   const BookCard = ({ book }) => {
     const progressPercentage = getProgressPercentage(book.currentPage, book.totalPages);
     const recommendedPages = getRecommendedDailyPages(book);
-    const statusColor = {
-      '읽는 중': 'bg-blue-100 text-blue-800 border-blue-200',
-      '완료': 'bg-green-100 text-green-800 border-green-200',
-      '미시작': 'bg-gray-100 text-gray-800 border-gray-200'
+    const daysRemaining = getDaysRemaining(book.targetDate);
+    
+    const statusStyles = {
+      '읽는 중': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
+      '완료': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+      '미시작': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', dot: 'bg-slate-400' }
     }[book.status];
 
-    const statusIcon = {
-      '읽는 중': '📖',
-      '완료': '✅',
-      '미시작': '📚'
-    }[book.status];
-
-    // 원서 삭제 핸들러
     const handleDelete = (e) => {
       e.stopPropagation();
-      if (window.confirm('정말 이 원서를 삭제하시겠습니까?\n\n삭제된 원서는 복구할 수 없습니다.')) {
+      if (window.confirm('정말 이 원서를 삭제하시겠습니까?')) {
         try {
-          // StudyContext의 deleteTextbook 함수 사용
           deleteTextbook(book.id);
           
-          // 청크 데이터 삭제 (있는 경우)
           if (book.file && book.file.isChunked && book.file.totalChunks) {
-            console.log('청크 데이터 삭제 시작:', {
-              bookId: book.id,
-              totalChunks: book.file.totalChunks
-            });
-            
             for (let i = 0; i < book.file.totalChunks; i++) {
               const chunkKey = `textbook_${book.id}_chunk_${i}`;
               localStorage.removeItem(chunkKey);
-              console.log('청크 삭제:', chunkKey);
             }
-            
-            console.log('청크 데이터 삭제 완료');
           }
-          
-          // 성공 메시지
-          alert('원서가 성공적으로 삭제되었습니다.');
           
         } catch (error) {
           console.error('원서 삭제 중 오류:', error);
@@ -122,143 +106,122 @@ export default function TextbookManagement() {
 
     return (
       <div 
-        className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 overflow-hidden hover:border-blue-200"
+        className="group bg-white border border-slate-200 rounded-xl hover:border-slate-300 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden"
         onClick={() => openBookDetail(book)}
       >
-        {/* 상단 이미지 영역 */}
-        <div className="relative h-48 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
-          <div className="relative z-10 text-center">
-            <div className="text-4xl mb-2">📚</div>
-            <div className="text-xs text-gray-600 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1">
-              {book.publisher}
+        {/* 카드 헤더 */}
+        <div className="p-5 pb-4 border-b border-slate-100">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-2 h-2 rounded-full ${statusStyles.dot}`}></div>
+                <span className={`text-xs font-medium px-2 py-1 rounded-md ${statusStyles.bg} ${statusStyles.text}`}>
+                  {book.status}
+                </span>
+              </div>
+              <h3 className="font-semibold text-slate-900 text-lg leading-tight mb-1 group-hover:text-blue-600 transition-colors" title={book.title}>
+                {getShortTitle(book.title)}
+              </h3>
+              <p className="text-sm text-slate-500">{book.author}</p>
+            </div>
+            <div className="flex items-center gap-1 ml-3">
+              <button
+                className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
+                onClick={handleDelete}
+                title="삭제"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-all">
+                <MoreHorizontal size={16} />
+              </button>
             </div>
           </div>
-          {/* 상태 배지 */}
-          <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
-            <span className="mr-1">{statusIcon}</span>
-            {book.status}
-          </div>
-          {/* 삭제 버튼 */}
-          <button
-            className="absolute top-3 left-3 bg-red-100 text-red-600 rounded-full px-2 py-1 text-xs font-semibold shadow hover:bg-red-200 transition"
-            onClick={handleDelete}
-            title="원서 삭제"
-          >
-            삭제
-          </button>
         </div>
 
-        {/* 콘텐츠 영역 */}
-        <div className="p-6">
-          {/* 제목과 저자 */}
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-gray-900 line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors" title={book.title}>
-              {getShortTitle(book.title)}
-            </h3>
-            <p className="text-sm text-gray-600 flex items-center">
-              <span className="mr-2">✍️</span>
-              {book.author}
-            </p>
+        {/* 진행률 */}
+        <div className="p-5 pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-slate-700">진행률</span>
+            <span className="text-sm text-slate-500">{progressPercentage}%</span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-2 mb-3">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300"
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+          
+          {/* 통계 정보 */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="text-center">
+              <div className="text-xs text-slate-500 mb-1">목표일</div>
+              <div className="text-sm font-medium text-slate-700">{formatDate(book.targetDate)}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-slate-500 mb-1">남은 일수</div>
+              <div className={`text-sm font-medium ${daysRemaining < 7 ? 'text-red-600' : 'text-slate-700'}`}>
+                {daysRemaining}일
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-slate-500 mb-1">일일 권장</div>
+              <div className="text-sm font-medium text-blue-600">{recommendedPages}p</div>
+            </div>
           </div>
 
-          {/* 진행률 */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">진행률</span>
-              <span className="text-sm text-gray-500">{progressPercentage}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>{book.currentPage}p</span>
-              <span>{book.totalPages}p</span>
-            </div>
-          </div>
-
-          {/* 학습 정보 */}
-          <div className="space-y-2 mb-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">목표일</span>
-              <span className="font-medium text-gray-700">{formatDate(book.targetDate)}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">남은 일수</span>
-              <span className={`font-medium ${getDaysRemaining(book.targetDate) < 7 ? 'text-red-600' : 'text-gray-700'}`}>
-                {getDaysRemaining(book.targetDate)}일
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">일일 권장</span>
-              <span className="font-medium text-blue-600">{recommendedPages}p</span>
-            </div>
+          {/* 페이지 정보 */}
+          <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
+            <span>{book.currentPage}p 읽음</span>
+            <span>총 {book.totalPages}p</span>
           </div>
 
           {/* 액션 버튼 */}
           <div className="flex gap-2">
-            <button 
-              className="flex-1 bg-blue-50 text-blue-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+            <Button 
+              className="flex-1 bg-slate-900 text-white py-2.5 px-3 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 openBookDetail(book);
               }}
             >
-              📖 읽기
-            </button>
+              읽기 계속
+            </Button>
             <button 
-              className="flex-1 bg-gray-50 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+              className="px-3 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                // 노트 보기 기능
               }}
             >
-              📝 노트
+              노트
             </button>
-        </div>
+          </div>
         </div>
       </div>
     );
   };
 
-  // 전체 원서 삭제 핸들러
   const handleDeleteAll = () => {
-    try {
-      console.log('즉시 정리 시작');
-      
-      // localStorage 완전 초기화
-      localStorage.clear();
-      console.log('localStorage 완전 초기화 완료');
-      
-      // 상태 업데이트
-      setBooks([]);
-      
-      console.log('즉시 정리 완료');
-      alert('모든 데이터가 즉시 정리되었습니다.\nlocalStorage가 완전히 초기화되었습니다.');
-      
-    } catch (error) {
-      console.error('즉시 정리 중 오류:', error);
-      alert('즉시 정리 중 오류가 발생했습니다.');
+    if (window.confirm('모든 원서 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) {
+      try {
+        localStorage.clear();
+        setBooks([]);
+        alert('모든 데이터가 삭제되었습니다.');
+      } catch (error) {
+        console.error('데이터 삭제 중 오류:', error);
+        alert('데이터 삭제 중 오류가 발생했습니다.');
+      }
     }
   };
 
-  // localStorage 정리 (고아 청크 데이터 삭제)
   const cleanupOrphanedChunks = () => {
     try {
-      console.log('고아 청크 데이터 정리 시작');
-      
-      // 현재 원서 ID 목록
       const savedBooks = JSON.parse(localStorage.getItem('textbooks') || '[]');
       const bookIds = savedBooks.map(book => book.id);
       
-      // 모든 localStorage 키 확인
       const allKeys = Object.keys(localStorage);
       const chunkKeys = allKeys.filter(key => key.startsWith('textbook_') && key.includes('chunk_'));
       
-      // 고아 청크 찾기 및 삭제
       let deletedCount = 0;
       chunkKeys.forEach(key => {
         const match = key.match(/textbook_(\d+)_chunk_(\d+)/);
@@ -267,125 +230,184 @@ export default function TextbookManagement() {
           if (!bookIds.includes(bookId)) {
             localStorage.removeItem(key);
             deletedCount++;
-            console.log('고아 청크 삭제:', key);
           }
         }
       });
       
-      console.log(`고아 청크 ${deletedCount}개 삭제 완료`);
       return deletedCount;
-      
     } catch (error) {
-      console.error('고아 청크 정리 중 오류:', error);
+      console.error('정리 중 오류:', error);
       return 0;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* 해더 */}
-      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-20 shadow-sm">
-        <div className="max-w mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-              <Book size={24} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
-                원서 관리
-              </h1>
-              <p className="text-xs text-slate-600 mt-0.5">진행 중인 원서들을 한눈에 관리하세요!</p>
+    <div className="min-h-screen bg-slate-50">
+      {/* 사이드바 공간 (필요시 추가) */}
+      <div className="flex">
+        {/* 메인 콘텐츠 */}
+        <div className="flex-1">
+          {/* 상단 바 */}
+          <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                {/* 페이지 제목 */}
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">원서 관리</h1>
+                  <p className="text-sm text-slate-600 mt-0.5">학습 중인 원서를 관리하고 진행상황을 확인하세요</p>
+                </div>
+
+                {/* 우측 액션 버튼들 */}
+                <div className="flex items-center gap-3">
+                  <button 
+                    className="px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors"
+                    onClick={() => {
+                      const count = cleanupOrphanedChunks();
+                      alert(count > 0 ? `${count}개 항목을 정리했습니다.` : '정리할 항목이 없습니다.');
+                    }}
+                  >
+                    <Sparkles size={16} className="mr-1.5" />
+                    정리
+                  </button>
+                  <button 
+                    className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                    onClick={handleDeleteAll}
+                  >
+                    <Trash2 size={16} className="mr-1.5" />
+                    전체 삭제
+                  </button>
+                  <Button 
+                    onClick={openAddBookPage}
+                    className="bg-slate-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
+                  >
+                    <Plus size={16} />
+                    새 원서
+                  </Button>
+                </div>
+              </div>
+
+              {/* 통계 카드들 */}
+              <div className="grid grid-cols-4 gap-4 mt-6">
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-slate-100 rounded-lg">
+                      <BookOpen size={20} className="text-slate-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+                      <div className="text-sm text-slate-500">전체 원서</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <TrendingUp size={20} className="text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-blue-900">{stats.reading}</div>
+                      <div className="text-sm text-blue-600">읽는 중</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                      <Target size={20} className="text-emerald-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-emerald-900">{stats.completed}</div>
+                      <div className="text-sm text-emerald-600">완료</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Calendar size={20} className="text-orange-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-orange-900">{stats.notStarted}</div>
+                      <div className="text-sm text-orange-600">예정</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-50/80 backdrop-blur px-3 py-2 rounded-lg border border-slate-200/50">
-              <Library size={16} className="text-blue-500" />
-              <span className="text-xs text-slate-600">총 {books.length}권</span>
-            </div>
-            
-            {/* 정리 버튼 */}
-            <button 
-              className="px-3 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-all duration-300 flex items-center gap-2 text-sm font-medium"
-              onClick={() => {
-                const deletedCount = cleanupOrphanedChunks();
-                if (deletedCount > 0) {
-                  alert(`${deletedCount}개의 고아 청크 데이터가 정리되었습니다.`);
-                } else {
-                  alert('정리할 고아 데이터가 없습니다.');
-                }
-              }}
-              title="고아 청크 데이터 정리"
-            >
-              🧹 정리
-            </button>
-            
-            {/* 즉시 정리 버튼 */}
-            <button 
-              className="px-3 py-2.5 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all duration-300 flex items-center gap-2 text-sm font-medium"
-              onClick={handleDeleteAll}
-              title="모든 데이터 즉시 정리"
-            >
-              🗑️ 즉시 정리
-            </button>
-            
-            <button 
-              className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-700 transition-all duration-300 flex items-center gap-2 font-medium"
-              onClick={openAddBookPage}
-            >
-              <Plus size={18} /> 새 원서
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* 메인 컨테이너 */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
-          {/* 필터 */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm font-medium text-gray-700">상태별 필터:</span>
-            </div>
-            <div className="flex gap-3 flex-wrap">
-            {['전체', '읽는 중', '완료', '미시작'].map(status => (
-                <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                    filterStatus === status 
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
-                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:border-blue-300'
-                  }`}
-              >
-                {status}
-                </button>
-            ))}
+
+          {/* 컨트롤 바 */}
+          <div className="bg-white border-b border-slate-200 px-6 py-3">
+            <div className="flex items-center justify-between">
+              {/* 검색 & 필터 */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="원서 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {['전체', '읽는 중', '완료', '미시작'].map(status => (
+                    <button
+                      key={status}
+                      onClick={() => setFilterStatus(status)}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        filterStatus === status 
+                          ? 'bg-slate-900 text-white' 
+                          : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 결과 수 */}
+              <div className="text-sm text-slate-500">
+                {filteredBooks.length}개의 원서
+              </div>
             </div>
           </div>
-          
-          {/* 원서 카드 리스트 */}
-          {filteredBooks.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">📚</div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">아직 등록된 원서가 없습니다</h3>
-              <p className="text-gray-500 mb-6">첫 번째 원서를 추가하고 학습을 시작해보세요!</p>
-              <Button 
-                onClick={openAddBookPage}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-              >
-                첫 원서 추가하기
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredBooks.map(book => (
-                <BookCard key={book.id} book={book} />
-              ))}
-            </div>
-          )}
+
+          {/* 메인 콘텐츠 영역 */}
+          <div className="p-6">
+            {filteredBooks.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BookOpen size={32} className="text-slate-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                  {searchQuery ? '검색 결과가 없습니다' : filterStatus === '전체' ? '아직 등록된 원서가 없습니다' : `${filterStatus} 상태의 원서가 없습니다`}
+                </h3>
+                <p className="text-slate-600 mb-6">
+                  {searchQuery ? '다른 키워드로 검색해보세요.' : '새로운 원서를 추가하여 학습을 시작해보세요.'}
+                </p>
+                {!searchQuery && filterStatus === '전체' && (
+                  <button 
+                    onClick={openAddBookPage}
+                    className="bg-slate-900 text-white px-6 py-3 rounded-md font-medium hover:bg-slate-800 transition-colors"
+                  >
+                    첫 원서 추가하기
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredBooks.map(book => (
+                  <BookCard key={book.id} book={book} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
-} 
+}

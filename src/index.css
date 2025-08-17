@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* react-pdf AnnotationLayer 스타일 */
 .react-pdf__Page__annotations {

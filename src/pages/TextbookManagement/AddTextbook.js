@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Book, Target, Brain, Upload, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Book, Target, Brain, Upload, FileText, Loader2, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 import Button from '../../components/common/Button';
 import FileUpload from '../../components/common/FileUpload';
 import AIPlanGenerator from '../../components/plan/AIPlanGenerator';
@@ -222,8 +222,6 @@ export default function AddTextbook() {
     // PDF 분석 시작
     await analyzePDFFile(file);
   }, [analyzePDFFile]);
-
-  
 
   // 파일명에서 정보 추출 (fallback)
   const extractInfoFromFileName = (fileName) => {
@@ -491,412 +489,433 @@ export default function AddTextbook() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* 헤더 */}
-      <div className="w-full bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w mx-auto px-4 py-2 flex items-center">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/textbook')}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all duration-300"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">새 원서 추가</h1>
-              <p className="text-sm text-gray-600">단계별로 원서 정보를 입력하세요</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 진행 단계 표시 */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 mb-8 shadow-lg border border-white/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                currentStep >= 1 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'bg-gray-200 text-gray-500'
-              }`}>
-                1
-              </div>
-              <span className={`text-sm font-medium transition-colors ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-500'}`}>
-                기본 정보
-              </span>
-            </div>
-            <div className="flex-1 h-1 bg-gray-200 rounded-full mx-6 relative">
-              <div className={`h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500 ${
-                currentStep >= 2 ? 'w-full' : 'w-0'
-              }`}></div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                currentStep >= 2 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'bg-gray-200 text-gray-500'
-              }`}>
-                2
-              </div>
-              <span className={`text-sm font-medium transition-colors ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-500'}`}>
-                학습 계획
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 단계별 컨텐츠 */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-          {currentStep === 1 && (
-            <div className="p-8 space-y-8">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white">
-                  <Book className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">기본 정보 입력</h2>
-                  <p className="text-gray-600">PDF 파일을 업로드하면 자동으로 정보를 추출합니다</p>
-                </div>
-              </div>
-
-              {/* 파일 업로드 */}
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">📁 전공 원서 파일 *</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-blue-400 transition-colors">
-                  <div className="flex flex-col items-center space-y-4">
-                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
-                      <Upload className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <div>
-                      <FileUpload
-                        onFileChange={handleFileChange}
-                        accept="application/pdf"
-                        label="PDF 파일을 드래그하거나 클릭하여 업로드하세요"
-                        disabled={isAnalyzing}
-                      />
-                      <p className="text-xs text-gray-500 mt-2">최대 100MB까지 업로드 가능</p>
-                    </div>
+    <div className="min-h-screen bg-slate-50">
+      <div className="flex">
+        {/* 메인 콘텐츠 */}
+        <div className="flex-1">
+          {/* 상단 바 */}
+          <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                {/* 페이지 제목 */}
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => navigate('/textbook')}
+                    className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all duration-300"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900">새 원서 추가</h1>
+                    <p className="text-sm text-slate-600 mt-0.5">단계별로 원서 정보를 입력하세요</p>
                   </div>
                 </div>
-                
-                {/* 분석 상태 표시 */}
-                <AnalysisStatus />
-              </div>
 
-              {/* 원서 정보 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">📖 원서 제목 *</label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    placeholder="예: Operating Systems: Three Easy Pieces"
-                    disabled={isAnalyzing}
-                  />
-                  {analysisComplete && formData.title && (
-                    <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
-                  )}
-                </div>
-                
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">✍️ 저자</label>
-                  <input
-                    type="text"
-                    value={formData.author}
-                    onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    placeholder="예: Remzi H. Arpaci-Dusseau"
-                    disabled={isAnalyzing}
-                  />
-                  {analysisComplete && formData.author && (
-                    <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
-                  )}
-                </div>
-                
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">🏢 출판사</label>
-                  <input
-                    type="text"
-                    value={formData.publisher}
-                    onChange={(e) => setFormData(prev => ({ ...prev, publisher: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    placeholder="예: MIT Press"
-                    disabled={isAnalyzing}
-                  />
-                  {analysisComplete && formData.publisher && (
-                    <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
-                  )}
-                </div>
-                
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">📄 총 페이지 수 *</label>
-                  <input
-                    type="number"
-                    value={formData.totalPages}
-                    onChange={(e) => setFormData(prev => ({ ...prev, totalPages: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    placeholder="예: 400"
-                    disabled={isAnalyzing}
-                  />
-                  {analysisComplete && formData.totalPages && (
-                    <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
-                  )}
+                {/* 우측 액션 버튼들 */}
+                <div className="flex items-center gap-3">
+                  <Button 
+                    onClick={() => navigate('/textbook')}
+                    variant="secondary"
+                    className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    취소
+                  </Button>
                 </div>
               </div>
 
-              {/* 과목/주제 (추가 정보) */}
-              {formData.subject && (
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">📚 과목/주제</label>
-                  <input
-                    type="text"
-                    value={formData.subject}
-                    onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    placeholder="예: Computer Science, Operating Systems"
-                    disabled={isAnalyzing}
-                  />
-                  <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
+              {/* 진행 단계 표시 */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+                      currentStep >= 1 ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      1
+                    </div>
+                    <span className={`text-sm font-medium transition-colors ${currentStep >= 1 ? 'text-slate-900' : 'text-slate-500'}`}>
+                      기본 정보
+                    </span>
+                  </div>
+                  <div className="flex-1 h-1 bg-slate-200 rounded-full mx-6 relative">
+                    <div className={`h-full bg-slate-900 rounded-full transition-all duration-500 ${
+                      currentStep >= 2 ? 'w-full' : 'w-0'
+                    }`}></div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+                      currentStep >= 2 ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      2
+                    </div>
+                    <span className={`text-sm font-medium transition-colors ${currentStep >= 2 ? 'text-slate-900' : 'text-slate-500'}`}>
+                      학습 계획
+                    </span>
+                  </div>
                 </div>
-              )}
+              </div>
+            </div>
+          </div>
 
-              {/* 목차 미리보기 */}
-              {formData.tableOfContents && formData.tableOfContents.length > 0 && (
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">📋 목차 미리보기</label>
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 max-h-40 overflow-y-auto">
-                    <div className="space-y-2">
-                      {formData.tableOfContents.slice(0, 10).map((item, index) => (
-                        <div key={index} className="flex items-center gap-3 text-sm">
-                          <span className="text-gray-500 min-w-[40px]">{item.number}</span>
-                          <span className="text-gray-700">{item.title}</span>
+          {/* 메인 콘텐츠 영역 */}
+          <div className="p-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                {currentStep === 1 && (
+                  <div className="p-8 space-y-8">
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                        <Book className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900">기본 정보 입력</h2>
+                        <p className="text-slate-600">PDF 파일을 업로드하면 자동으로 정보를 추출합니다</p>
+                      </div>
+                    </div>
+
+                    {/* 파일 업로드 */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-slate-700">📁 전공 원서 파일 *</label>
+                      <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-slate-400 transition-colors">
+                        <div className="flex flex-col items-center space-y-4">
+                          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
+                            <Upload className="w-8 h-8 text-slate-600" />
+                          </div>
+                          <div>
+                            <FileUpload
+                              onFileChange={handleFileChange}
+                              accept="application/pdf"
+                              label="PDF 파일을 드래그하거나 클릭하여 업로드하세요"
+                              disabled={isAnalyzing}
+                            />
+                            <p className="text-xs text-slate-500 mt-2">최대 100MB까지 업로드 가능</p>
+                          </div>
                         </div>
-                      ))}
-                      {formData.tableOfContents.length > 10 && (
-                        <p className="text-xs text-gray-500 mt-2">
-                          ... 외 {formData.tableOfContents.length - 10}개 항목
-                        </p>
+                      </div>
+                      
+                      {/* 분석 상태 표시 */}
+                      <AnalysisStatus />
+                    </div>
+
+                    {/* 원서 정보 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-slate-700">📖 원서 제목 *</label>
+                        <input
+                          type="text"
+                          value={formData.title}
+                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-300"
+                          placeholder="예: Operating Systems: Three Easy Pieces"
+                          disabled={isAnalyzing}
+                        />
+                        {analysisComplete && formData.title && (
+                          <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-slate-700">✍️ 저자</label>
+                        <input
+                          type="text"
+                          value={formData.author}
+                          onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-300"
+                          placeholder="예: Remzi H. Arpaci-Dusseau"
+                          disabled={isAnalyzing}
+                        />
+                        {analysisComplete && formData.author && (
+                          <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-slate-700">🏢 출판사</label>
+                        <input
+                          type="text"
+                          value={formData.publisher}
+                          onChange={(e) => setFormData(prev => ({ ...prev, publisher: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-300"
+                          placeholder="예: MIT Press"
+                          disabled={isAnalyzing}
+                        />
+                        {analysisComplete && formData.publisher && (
+                          <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-slate-700">📄 총 페이지 수 *</label>
+                        <input
+                          type="number"
+                          value={formData.totalPages}
+                          onChange={(e) => setFormData(prev => ({ ...prev, totalPages: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-300"
+                          placeholder="예: 400"
+                          disabled={isAnalyzing}
+                        />
+                        {analysisComplete && formData.totalPages && (
+                          <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 과목/주제 (추가 정보) */}
+                    {formData.subject && (
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-slate-700">📚 과목/주제</label>
+                        <input
+                          type="text"
+                          value={formData.subject}
+                          onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-300"
+                          placeholder="예: Computer Science, Operating Systems"
+                          disabled={isAnalyzing}
+                        />
+                        <p className="text-xs text-green-600">✓ PDF에서 자동 추출됨</p>
+                      </div>
+                    )}
+
+                    {/* 목차 미리보기 */}
+                    {formData.tableOfContents && formData.tableOfContents.length > 0 && (
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-slate-700">📋 목차 미리보기</label>
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 max-h-40 overflow-y-auto">
+                          <div className="space-y-2">
+                            {formData.tableOfContents.slice(0, 10).map((item, index) => (
+                              <div key={index} className="flex items-center gap-3 text-sm">
+                                <span className="text-slate-500 min-w-[40px]">{item.number}</span>
+                                <span className="text-slate-700">{item.title}</span>
+                              </div>
+                            ))}
+                            {formData.tableOfContents.length > 10 && (
+                              <p className="text-xs text-slate-500 mt-2">
+                                ... 외 {formData.tableOfContents.length - 10}개 항목
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-green-600">✓ PDF에서 자동 추출된 목차 ({formData.tableOfContents.length}개 항목)</p>
+                      </div>
+                    )}
+
+                    {/* 학습 기간 */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-slate-700">📅 학습 기간 *</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-xs text-slate-500 font-medium">시작일</label>
+                          <input
+                            type="date"
+                            name="startDate"
+                            value={formData.startDate}
+                            onChange={handleDateChange}
+                            className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-300"
+                            disabled={isAnalyzing}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-xs text-slate-500 font-medium">목표 완료일</label>
+                          <input
+                            type="date"
+                            name="endDate"
+                            value={formData.endDate}
+                            onChange={handleDateChange}
+                            className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-300"
+                            disabled={isAnalyzing}
+                          />
+                        </div>
+                      </div>
+                      {daysLeft !== null && daysLeft > 0 && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-blue-600">📊</span>
+                            <span className="text-sm font-medium text-blue-700">
+                              총 {daysLeft}일의 학습 기간이 설정되었습니다
+                              {formData.totalPages && (
+                                <span className="ml-2">
+                                  (하루 평균 {Math.ceil(parseInt(formData.totalPages) / daysLeft)}페이지)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                  <p className="text-xs text-green-600">✓ PDF에서 자동 추출된 목차 ({formData.tableOfContents.length}개 항목)</p>
-                </div>
-              )}
 
-              {/* 학습 기간 */}
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">📅 학습 기간 *</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-xs text-gray-500 font-medium">시작일</label>
-                    <input
-                      type="date"
-                      name="startDate"
-                      value={formData.startDate}
-                      onChange={handleDateChange}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                      disabled={isAnalyzing}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-xs text-gray-500 font-medium">목표 완료일</label>
-                    <input
-                      type="date"
-                      name="endDate"
-                      value={formData.endDate}
-                      onChange={handleDateChange}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                      disabled={isAnalyzing}
-                    />
-                  </div>
-                </div>
-                {daysLeft !== null && daysLeft > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-blue-600">📊</span>
-                      <span className="text-sm font-medium text-blue-700">
-                        총 {daysLeft}일의 학습 기간이 설정되었습니다
-                        {formData.totalPages && (
-                          <span className="ml-2">
-                            (하루 평균 {Math.ceil(parseInt(formData.totalPages) / daysLeft)}페이지)
-                          </span>
+                    <div className="flex justify-end pt-6 border-t border-slate-200">
+                      <Button
+                        onClick={() => setCurrentStep(2)}
+                        disabled={!formData.title || !formData.totalPages || !formData.startDate || !formData.endDate || isAnalyzing}
+                        className="px-8 py-3 bg-slate-900 text-white hover:bg-slate-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isAnalyzing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            분석 중...
+                          </>
+                        ) : (
+                          '다음 단계 →'
                         )}
-                      </span>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 2 && (
+                  <div className="p-8 space-y-8">
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                        <Target className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900">학습 계획 설정</h2>
+                        <p className="text-slate-600">목표에 맞는 학습 계획을 세워보세요</p>
+                      </div>
+                    </div>
+
+                    {/* 학습 목적 */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-slate-700">🎯 학습 목적 *</label>
+                      <input
+                        type="text"
+                        value={formData.purpose}
+                        onChange={(e) => setFormData(prev => ({ ...prev, purpose: e.target.value }))}
+                        className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-300"
+                        placeholder="예: 전공 심화 학습, 자격증 대비, 연구 목적, 취업 준비 등"
+                      />
+                    </div>
+
+                    {/* 학습 강도 */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-slate-700">⚡ 학습 강도</label>
+                      <div className="grid grid-cols-3 gap-4">
+                        {intensityOptions.map(option => (
+                          <button
+                            key={option}
+                            onClick={() => setFormData(prev => ({ ...prev, intensity: option }))}
+                            className={`p-4 rounded-lg border-2 transition-all duration-300 ${
+                              formData.intensity === option
+                                ? 'border-slate-900 bg-slate-50 text-slate-900'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="text-center">
+                              <div className="text-lg font-semibold">{option}</div>
+                              <div className="text-xs mt-1">
+                                {option === '낮음' && '천천히 꼼꼼히'}
+                                {option === '보통' && '적당한 속도로'}
+                                {option === '높음' && '빠르게 집중적으로'}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 학습 계획 미리보기 */}
+                    {daysLeft && formData.totalPages && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
+                        <h3 className="text-lg font-semibold text-slate-900 mb-4">📈 예상 학습 계획</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div className="bg-white p-4 rounded-lg">
+                            <div className="text-slate-500 mb-1">총 학습 기간</div>
+                            <div className="text-xl font-bold text-slate-900">{daysLeft}일</div>
+                          </div>
+                          <div className="bg-white p-4 rounded-lg">
+                            <div className="text-slate-500 mb-1">하루 평균</div>
+                            <div className="text-xl font-bold text-slate-900">
+                              {Math.ceil(parseInt(formData.totalPages) / daysLeft)}페이지
+                            </div>
+                          </div>
+                          <div className="bg-white p-4 rounded-lg">
+                            <div className="text-slate-500 mb-1">예상 주차</div>
+                            <div className="text-xl font-bold text-slate-900">
+                              {Math.ceil(daysLeft / 7)}주
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI 플랜 생성 */}
+                    <div className="space-y-4">
+                      <label className="block text-sm font-semibold text-slate-700">🤖 스마트 학습 플랜 생성 *</label>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleGeneratePlan}
+                          disabled={!formData.totalPages || !daysLeft}
+                          className="flex-1 bg-slate-900 text-white rounded-lg px-6 py-4 font-semibold hover:bg-slate-800 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Brain className="w-5 h-5" />
+                          {formData.tableOfContents.length > 0 ? '목차 기반 플랜 생성' : '페이지 기반 플랜 생성'}
+                        </button>
+                        {planTasks.length > 0 && (
+                          <button
+                            onClick={() => setPlanTasks([])}
+                            className="px-6 py-4 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition-all duration-300"
+                          >
+                            초기화
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* 생성된 플랜 미리보기 */}
+                      {planTasks.length > 0 && (
+                        <div className="bg-white border border-slate-200 rounded-lg p-6">
+                          <h4 className="text-lg font-semibold text-slate-900 mb-4">
+                            📋 생성된 학습 계획 ({planTasks.length}주차)
+                          </h4>
+                          <div className="space-y-3 max-h-60 overflow-y-auto">
+                            {planTasks.map((task, index) => (
+                              <div key={index} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
+                                <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-sm font-bold">
+                                  {task.week}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-medium text-slate-900">{task.title || task.task}</div>
+                                  {task.memo && (
+                                    <div className="text-sm text-slate-600">{task.memo}</div>
+                                  )}
+                                  {task.pages && (
+                                    <div className="text-xs text-slate-600 mt-1">약 {task.pages}페이지</div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <AIPlanGenerator
+                        studyIntensity={formData.intensity}
+                        onGenerate={handleGeneratePlan}
+                        planTasks={planTasks}
+                        setPlanTasks={setPlanTasks}
+                      />
+                    </div>
+
+                    <div className="flex justify-between pt-6 border-t border-slate-200">
+                      <Button
+                        onClick={() => setCurrentStep(1)}
+                        variant="secondary"
+                        className="px-8 py-3 bg-slate-200 text-slate-700 hover:bg-slate-300"
+                      >
+                        ← 이전 단계
+                      </Button>
+                      <Button
+                        onClick={handleSave}
+                        disabled={!formData.purpose || planTasks.length === 0}
+                        className="px-8 py-3 bg-slate-900 text-white hover:bg-slate-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        원서 추가 완료
+                      </Button>
                     </div>
                   </div>
                 )}
               </div>
-
-              <div className="flex justify-end pt-6">
-                <Button
-                  onClick={() => setCurrentStep(2)}
-                  disabled={!formData.title || !formData.totalPages || !formData.startDate || !formData.endDate || isAnalyzing}
-                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      분석 중...
-                    </>
-                  ) : (
-                    '다음 단계 →'
-                  )}
-                </Button>
-              </div>
             </div>
-          )}
-
-          {currentStep === 2 && (
-            <div className="p-8 space-y-8">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-teal-600 rounded-xl flex items-center justify-center text-white">
-                  <Target className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">학습 계획 설정</h2>
-                  <p className="text-gray-600">목표에 맞는 학습 계획을 세워보세요</p>
-                </div>
-              </div>
-
-              {/* 학습 목적 */}
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">🎯 학습 목적 *</label>
-                <input
-                  type="text"
-                  value={formData.purpose}
-                  onChange={(e) => setFormData(prev => ({ ...prev, purpose: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                  placeholder="예: 전공 심화 학습, 자격증 대비, 연구 목적, 취업 준비 등"
-                />
-              </div>
-
-              {/* 학습 강도 */}
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">⚡ 학습 강도</label>
-                <div className="grid grid-cols-3 gap-4">
-                  {intensityOptions.map(option => (
-                    <button
-                      key={option}
-                      onClick={() => setFormData(prev => ({ ...prev, intensity: option }))}
-                      className={`p-4 rounded-xl border-2 transition-all duration-300 ${
-                        formData.intensity === option
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="text-lg font-semibold">{option}</div>
-                        <div className="text-xs mt-1">
-                          {option === '낮음' && '천천히 꼼꼼히'}
-                          {option === '보통' && '적당한 속도로'}
-                          {option === '높음' && '빠르게 집중적으로'}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 학습 계획 미리보기 */}
-              {daysLeft && formData.totalPages && (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📈 예상 학습 계획</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="bg-white p-4 rounded-lg">
-                      <div className="text-gray-500 mb-1">총 학습 기간</div>
-                      <div className="text-xl font-bold text-blue-600">{daysLeft}일</div>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg">
-                      <div className="text-gray-500 mb-1">하루 평균</div>
-                      <div className="text-xl font-bold text-green-600">
-                        {Math.ceil(parseInt(formData.totalPages) / daysLeft)}페이지
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg">
-                      <div className="text-gray-500 mb-1">예상 주차</div>
-                      <div className="text-xl font-bold text-purple-600">
-                        {Math.ceil(daysLeft / 7)}주
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* AI 플랜 생성 */}
-              <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700">🤖 스마트 학습 플랜 생성 *</label>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleGeneratePlan}
-                    disabled={!formData.totalPages || !daysLeft}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl px-6 py-4 font-semibold hover:from-purple-700 hover:to-blue-700 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Brain className="w-5 h-5" />
-                    {formData.tableOfContents.length > 0 ? '목차 기반 플랜 생성' : '페이지 기반 플랜 생성'}
-                  </button>
-                  {planTasks.length > 0 && (
-                    <button
-                      onClick={() => setPlanTasks([])}
-                      className="px-6 py-4 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition-all duration-300"
-                    >
-                      초기화
-                    </button>
-                  )}
-                </div>
-                
-                {/* 생성된 플랜 미리보기 */}
-                {planTasks.length > 0 && (
-                  <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                      📋 생성된 학습 계획 ({planTasks.length}주차)
-                    </h4>
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
-                      {planTasks.map((task, index) => (
-                        <div key={index} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                          <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">
-                            {task.week}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">{task.title || task.task}</div>
-                            {task.memo && (
-                              <div className="text-sm text-gray-600">{task.memo}</div>
-                            )}
-                            {task.pages && (
-                              <div className="text-xs text-blue-600 mt-1">약 {task.pages}페이지</div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                <AIPlanGenerator
-                  studyIntensity={formData.intensity}
-                  onGenerate={handleGeneratePlan}
-                  planTasks={planTasks}
-                  setPlanTasks={setPlanTasks}
-                />
-              </div>
-
-              <div className="flex justify-between pt-6">
-                <Button
-                  onClick={() => setCurrentStep(1)}
-                  variant="secondary"
-                  className="px-8 py-3"
-                >
-                  ← 이전 단계
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={!formData.purpose || planTasks.length === 0}
-                  className="px-8 py-3 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  원서 추가 완료
-                </Button>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
 

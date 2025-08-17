@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutletContext, useParams} from 'react-router-dom';
-import { Search, Settings, NotebookPen, X, Eye, BookOpen, AlertTriangle, FileDown, CheckCircle } from 'lucide-react';
+import { Search, Settings, NotebookPen, X, BookOpen, AlertTriangle, FileDown, CheckCircle, ZoomIn, ZoomOut, List, ChevronLeft, ChevronRight, Target, Star } from 'lucide-react';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import TextbookContentView from '../../components/textbook/TextbookContentView';
 import NoteBookView from '../../components/textbook/NoteBookView';
@@ -9,10 +9,15 @@ import { createAnnotatedPDF, downloadPDFBlob} from '../../utils/pdfExportUtils';
 
 const TextbookStudyPage = () => {
   const { id } = useParams();
-  // const location = useLocation();
   const context = useOutletContext();
   const activeView = context ? context.activeView : 'content';
-  const textbookContentRef = useRef(null);
+  const { setStudyTimer: setLayoutStudyTimer } = context || {};
+  const [viewMode, setViewMode] = useState('pdf');
+  const [scale, setScale] = useState(1.8);
+  const [rotation, setRotation] = useState(0);
+  const [tableOfContents, setTableOfContents] = useState([]); // eslint-disable-line no-unused-vars
+  const [tocLoading, setTocLoading] = useState(false); // eslint-disable-line no-unused-vars
+  const [numPages, setNumPages] = useState(0);
 
   // 원서 데이터 상태
   const [textbookData, setTextbookData] = useState(null);
@@ -45,6 +50,7 @@ const TextbookStudyPage = () => {
   const [highlightColor, setHighlightColor] = useState('bg-yellow-200');
   const [isNotePanelVisible, setIsNotePanelVisible] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [shouldOpenEditor, setShouldOpenEditor] = useState(false);
 
   const highlightColors = [
     { name: '노랑', class: 'bg-yellow-200', preview: 'bg-yellow-200' },
@@ -100,16 +106,47 @@ const TextbookStudyPage = () => {
     setCurrentChapter(newChapter);
   }, [currentPage, plan]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 타이머 효과
+  // 타이머 효과 수정 - setLayoutStudyTimer 호출을 별도 effect로 분리
   useEffect(() => {
-    let interval;
-    if (isStudying) {
-      interval = setInterval(() => {
+    // 페이지 가시성 변경 감지
+    const handleVisibilityChange = () => {
+      setIsStudying(!document.hidden);
+    };
+
+    // 페이지 포커스/블러 감지
+    const handleFocus = () => setIsStudying(true);
+    const handleBlur = () => setIsStudying(false);
+
+    // 초기 상태 설정
+    setIsStudying(!document.hidden);
+
+    // 이벤트 리스너 등록
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    // 타이머 설정 - 페이지가 보이는 상태일 때만 증가
+    let interval = setInterval(() => {
+      if (!document.hidden) {
         setStudyTimer(prev => prev + 1);
-      }, 1000);
+      }
+    }, 1000);
+    
+    // 클린업 함수
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // Layout의 studyTimer 업데이트를 별도 effect로 분리
+  useEffect(() => {
+    if (setLayoutStudyTimer) {
+      setLayoutStudyTimer(studyTimer);
     }
-    return () => clearInterval(interval);
-  }, [isStudying]);
+  }, [studyTimer, setLayoutStudyTimer]);
 
   // 원서 데이터 불러오기 (개선된 버전)
   useEffect(() => {
@@ -256,9 +293,6 @@ const TextbookStudyPage = () => {
           books[bookIndex] = updatedBook;
           localStorage.setItem('textbooks', JSON.stringify(books));
           
-          // textbookData 상태 업데이트 제거 (무한 루프 방지)
-          // setTextbookData(prev => ({ ...prev, ...updatedBook }));
-          
           console.log('💾 데이터 저장 완료:', {
             id: id,
             currentPage,
@@ -295,18 +329,6 @@ const TextbookStudyPage = () => {
   const handlePlanUpdate = (updatedPlan) => {
     console.log('📝 학습 계획 업데이트:', updatedPlan.length, '개');
     setPlan(updatedPlan);
-  };
-
-  // 학습 시작/종료 함수
-  const toggleStudy = () => {
-    if (isStudying) {
-      // 학습 종료 시 진행률 체크
-      const todayPlan = plan.find(p => p.date === new Date().toISOString().split('T')[0]);
-      if (todayPlan && !todayPlan.completed) {
-        setShowProgressModal(true);
-      }
-    }
-    setIsStudying(!isStudying);
   };
 
   const formatTime = (seconds) => {
@@ -353,6 +375,11 @@ const TextbookStudyPage = () => {
   const handleOpenNotePanel = () => {
     setIsNotePanelVisible(true);
     setShowQuickActions(false);
+    setShouldOpenEditor(true);
+  };
+
+  const onEditorOpened = () => {
+    setShouldOpenEditor(false);
   };
 
   const handleHighlightClick = (highlightId) => {
@@ -581,7 +608,6 @@ const TextbookStudyPage = () => {
     };
   };
 
-
   const toggleNotePanel = () => setIsNotePanelVisible(!isNotePanelVisible);
   
   // 로딩 상태
@@ -662,6 +688,72 @@ const TextbookStudyPage = () => {
     return publisher;
   };
 
+  // PDF 확대/축소 함수
+  const zoomIn = () => setScale(prev => Math.min(prev + 0.1, 3));
+  const zoomOut = () => setScale(prev => Math.max(prev - 0.1, 0.5));
+
+  // 페이지 입력 핸들러
+  const handlePageInput = (e) => {
+    const page = parseInt(e.target.value);
+    if (page && page > 0 && page <= numPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // PDF 문서 로드 성공 핸들러 - PDFTocExtractor 직접 사용
+  const handleDocumentLoadSuccess = async (pdf, numPages) => {
+    console.log('📚 PDF 문서 로드 성공 (상위 컴포넌트):', { numPages, pdf: !!pdf });
+    setNumPages(numPages);
+    
+    // PDF 문서 객체 직접 저장
+    if (pdf && typeof pdf === 'object') {
+      console.log('✅ PDF 객체 상태:', {
+        numPages: pdf.numPages,
+        hasGetOutline: typeof pdf.getOutline === 'function',
+        hasGetPage: typeof pdf.getPage === 'function'
+      });
+    }
+  };
+
+  // 페이지 네비게이션
+  const goToPreviousPage = () => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage(prev => Math.min(numPages, prev + 1));
+  };
+
+  // 현재 페이지의 챕터 정보를 가져오는 함수
+  const getChapterInfo = (page) => {
+    if (!tableOfContents || tableOfContents.length === 0) {
+      return `P.${page}`;
+    }
+    
+    // 페이지에 해당하는 챕터 찾기
+    let chapterNumber = 1;
+    for (let i = 0; i < tableOfContents.length; i++) {
+      const item = tableOfContents[i];
+      
+      // 최상위 항목만 챕터로 간주 (level이 0인 항목)
+      if (item.level === 0) {
+        // 다음 챕터의 시작 페이지 찾기
+        const nextChapterPage = (i < tableOfContents.length - 1 && tableOfContents[i + 1].level === 0) 
+          ? tableOfContents[i + 1].page 
+          : Number.MAX_SAFE_INTEGER;
+        
+        // 현재 페이지가 이 챕터에 속하는지 확인
+        if (item.page && page >= item.page && page < nextChapterPage) {
+          return `chap${chapterNumber}.p${page}`;
+        }
+        
+        chapterNumber++;
+      }
+    }
+    
+    return `P.${page}`;
+  };
+
   const renderContent = () => {
     if (dataLoading) {
       return (
@@ -701,35 +793,39 @@ const TextbookStudyPage = () => {
     switch (activeView) {
       case 'notes':
         return (
-          <NoteBookView
-            textbookData={textbookData}
-            allNotes={allNotes}
-            setAllNotes={setAllNotes}
-            currentPage={currentPage}
-            highlights={highlights}
-          />
+          <div className="h-full overflow-y-auto">
+            <NoteBookView
+              textbookData={textbookData}
+              allNotes={allNotes}
+              setAllNotes={setAllNotes}
+              currentPage={currentPage}
+              highlights={highlights}
+              tableOfContents={tableOfContents}
+            />
+          </div>
         );
       
       case 'progress':
         return (
-          <StudyProgressView
-            textbookData={textbookData}
-            currentPage={currentPage}
-            totalPages={textbookData.totalPages}
-            studyTimer={studyTimer}
-            isStudying={isStudying}
-            highlights={highlights}
-            allNotes={allNotes}
-            plan={plan}
-            onPlanUpdate={handlePlanUpdate}
-          />
+          <div className="h-full overflow-y-auto">
+            <StudyProgressView
+              textbookData={textbookData}
+              currentPage={currentPage}
+              totalPages={textbookData.totalPages}
+              studyTimer={studyTimer}
+              isStudying={isStudying}
+              highlights={highlights}
+              allNotes={allNotes}
+              plan={plan}
+              onPlanUpdate={handlePlanUpdate}
+            />
+          </div>
         );
       
       case 'content':
       default:
         return (
           <TextbookContentView
-            ref={textbookContentRef}
             pdfId={textbookData.pdfId} // 저장된 PDF ID 전달
             textbookData={textbookData}
             highlights={highlights}
@@ -741,9 +837,9 @@ const TextbookStudyPage = () => {
             toggleNotePanel={toggleNotePanel}
             allNotes={allNotes}
             selectedText={selectedText}
-            shouldOpenEditor={showNoteDialog}
+            shouldOpenEditor={shouldOpenEditor}
             handleNotePanelSave={handleNotePanelSave}
-            onEditorOpened={() => setShowNoteDialog(false)}
+            onEditorOpened={onEditorOpened}
             showQuickActions={showQuickActions}
             selectionPosition={selectionPosition}
             highlightColors={highlightColors}
@@ -758,157 +854,246 @@ const TextbookStudyPage = () => {
             highlightColor={highlightColor}
             setHighlightColor={setHighlightColor}
             handleSaveNote={handleSaveNote}
+            // 추가 PDF 컨트롤 관련 props
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            scale={scale}
+            setScale={setScale}
+            rotation={rotation}
+            setRotation={setRotation}
+            numPages={numPages}
+            setNumPages={setNumPages}
+            onDocumentLoadSuccess={(pdfDoc, pages) => {
+              console.log('📚 문서 로드 성공 콜백:', { pages, pdfDoc: !!pdfDoc });
+              handleDocumentLoadSuccess(pdfDoc, pages);
+            }}
+            tableOfContents={tableOfContents}
+            tocLoading={tocLoading}
           />
         );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col">
-      {/* 헤더 */}
-      <div className="w-full bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 mb-0">
-        <div className="max-w mx-auto px-4 py-2.5 flex items-center justify-between">
-          <div className="flex flex-col min-w-[180px] flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-gray-900 truncate" title={textbookData.title}>
-              {getShortTitle(textbookData.title)}
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              {textbookData.author && (
-                <span className="text-xs text-gray-600 truncate" title={textbookData.author}>
-                  by {getShortAuthor(textbookData.author)}
-                </span>
-              )}
-              {textbookData.publisher && (
-                <span className="text-xs text-gray-500 truncate" title={textbookData.publisher}>
-                  • {getShortPublisher(textbookData.publisher)}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center space-x-3 flex-shrink-0 ml-4">
-            <div className="flex items-center space-x-2 text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
-              <Eye className="w-4 h-4" />
-              <span>페이지 {currentPage}</span>
-              {textbookData.totalPages > 0 && (
-                <span className="text-gray-400">/ {textbookData.totalPages}</span>
-              )}
-            </div>
-            <div className="flex items-center space-x-2 text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
-              <BookOpen className="w-4 h-4" />
-              <span>진도율: {textbookData.progress || Math.round((currentPage / textbookData.totalPages) * 100) || 0}%</span>
-            </div>
-            <div className="flex items-center space-x-2 text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
-              <span>학습시간: {formatTime(studyTimer)}</span>
-              <button
-                onClick={toggleStudy}
-                className={`px-2 py-1 text-xs rounded transition-colors ${
-                  isStudying 
-                    ? 'bg-red-500 text-white hover:bg-red-600' 
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}
-              >
-                {isStudying ? '정지' : '시작'}
-              </button>
-            </div>
-            <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-              <Search className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={toggleNotePanel}
-              className={`p-2 rounded-lg transition-colors ${
-                isNotePanelVisible 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-              title={isNotePanelVisible ? "노트 패널 닫기" : "노트 패널 열기"}
-            >
-              <NotebookPen className="w-5 h-5" />
-            </button>
-            
-            {/* 설정 메뉴 */}
-            <div className="relative">
-              <button 
-                onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              
-              {/* 설정 드롭다운 메뉴 */}
-              {showSettingsMenu && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 z-50">
-                  <div className="p-2">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('📥 다운로드 버튼 클릭됨');
-                        debugPDFData(); // 디버깅 정보 출력
-                        handleDownloadPDF();
-                      }}
-                      disabled={isDownloading}
-                      className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isDownloading ? (
-                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                        <FileDown className="w-4 h-4" />
-                      )}
-                      <div className="flex-1 text-left">
-                        <div className="font-medium">
-                          {isDownloading ? '다운로드 중...' : '편집된 PDF 다운로드'}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {isDownloading ? 'PDF를 생성하고 있습니다' : '메모와 노트가 포함된 PDF'}
-                        </div>
-                      </div>
-                    </button>
-                    
-                    {/* 디버깅용 버튼 추가 */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        debugPDFData();
-                      }}
-                      className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-500 hover:bg-gray-50 rounded-xl transition-colors"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <div className="flex-1 text-left">
-                        <div className="font-medium">디버깅 정보 출력</div>
-                        <div className="text-xs text-gray-400">개발자 도구에서 확인</div>
-                      </div>
-                    </button>
-                    
-                    <div className="border-t border-gray-100 my-2"></div>
-                    
-                    <button
-                      onClick={() => {
-                        setShowSettingsMenu(false);
-                      }}
-                      className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-colors"
-                    >
-                      <Settings className="w-4 h-4" />
-                      <div className="flex-1 text-left">
-                        <div className="font-medium">기타 설정</div>
-                        <div className="text-xs text-gray-500">뷰어 및 학습 설정</div>
-                      </div>
-                    </button>
+    <div className="h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col overflow-hidden">
+      {/* 개선된 통합 헤더 */}
+      <div className="w-full bg-white shadow-sm border-b border-gray-100 flex-shrink-0 z-10">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* 왼쪽: 원서 정보 및 학습 상태 */}
+            <div className="flex items-center space-x-6">
+              {/* 원서 기본 정보 */}
+              <div className="flex flex-col">
+                <div className="flex items-center space-x-3">
+                  <h1 className="text-xl font-bold text-gray-900" title={textbookData.title}>
+                    {getShortTitle(textbookData.title)}
+                  </h1>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                      {getChapterInfo(currentPage)}
+                    </span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                      {textbookData.progress || Math.round((currentPage / textbookData.totalPages) * 100) || 0}% 완료
+                    </span>
                   </div>
                 </div>
+                <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
+                  {textbookData.author && (
+                    <>
+                      <span className="truncate max-w-[200px]" title={textbookData.author}>
+                        {getShortAuthor(textbookData.author)}
+                      </span>
+                      <span className="text-gray-400">•</span>
+                    </>
+                  )}
+                  {textbookData.publisher && (
+                    <span className="text-gray-500 truncate max-w-[120px]" title={textbookData.publisher}>
+                      {getShortPublisher(textbookData.publisher)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              {/* PDF 컨트롤 그룹 */}
+              {activeView === 'content' && (
+                <div className="flex items-center space-x-1 bg-gray-50 rounded-lg p-1">
+                  <button 
+                    onClick={zoomOut}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors"
+                    title="축소"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs text-gray-600 px-2 py-1 bg-white rounded-md font-mono min-w-[45px] text-center">
+                    {Math.round(scale * 100)}%
+                  </span>
+                  <button 
+                    onClick={zoomIn}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors"
+                    title="확대"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                </div>
               )}
+
+              {/* PDF 컨트롤 영역 */}
+              {activeView === 'content' && (
+                <div className="flex items-center space-x-1 bg-gray-50 rounded-lg p-1">
+                  <button 
+                    onClick={goToPreviousPage}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors disabled:opacity-50"
+                    disabled={currentPage <= 1}
+                    title="이전 페이지"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-center space-x-1 bg-white rounded-md px-3 py-2">
+                    <input
+                      type="number"
+                      value={currentPage}
+                      onChange={handlePageInput}
+                      className="w-12 text-xs text-center border-none outline-none font-mono"
+                      min="1"
+                      max={numPages || 1}
+                    />
+                    <span className="text-xs text-gray-400">/</span>
+                    <span className="text-xs text-gray-600 font-mono">{numPages || '?'}</span>
+                  </div>
+                  <button 
+                    onClick={goToNextPage}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors disabled:opacity-50"
+                    disabled={currentPage >= numPages}
+                    title="다음 페이지"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* 구분선 */}
+              <div className="w-px h-8 bg-gray-200"></div>
+
+              {/* 기능 버튼 그룹 */}
+              <div className="flex items-center space-x-1">
+                <button 
+                  className="p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="검색"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+                
+                {activeView === 'content' && (
+                  <button 
+                    onClick={() => setViewMode(viewMode === 'toc' ? 'pdf' : 'toc')}
+                    className={`p-2.5 rounded-lg transition-colors ${
+                      viewMode === 'toc' 
+                        ? 'bg-blue-600 text-white shadow-sm' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                    title="목차"
+                  >
+                    <List className="w-5 h-5" />
+                  </button>
+                )}
+
+                <button 
+                  onClick={toggleNotePanel}
+                  className={`p-2.5 rounded-lg transition-colors ${
+                    isNotePanelVisible 
+                      ? 'bg-blue-600 text-white shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                  title={isNotePanelVisible ? "노트 패널 닫기" : "노트 패널 열기"}
+                >
+                  <NotebookPen className="w-5 h-5" />
+                </button>
+
+                {/* 설정 메뉴 */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                    className="p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="설정"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+                  {/* 설정 드롭다운 메뉴 */}
+                  {showSettingsMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+                      <div className="p-2">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('📥 다운로드 버튼 클릭됨');
+                            debugPDFData();
+                            handleDownloadPDF();
+                          }}
+                          disabled={isDownloading}
+                          className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isDownloading ? (
+                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <FileDown className="w-4 h-4" />
+                          )}
+                          <div className="flex-1 text-left">
+                            <div className="font-medium">
+                              {isDownloading ? '다운로드 중...' : 'PDF 다운로드'}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {isDownloading ? 'PDF를 생성하고 있습니다' : '메모와 노트 포함'}
+                            </div>
+                          </div>
+                        </button>
+                        
+                        <div className="border-t border-gray-100 my-2"></div>
+                        
+                        <button className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                          <Target className="w-4 h-4" />
+                          <div className="flex-1 text-left">
+                            <div className="font-medium">학습 목표 설정</div>
+                            <div className="text-xs text-gray-500">일일 학습량 조정</div>
+                          </div>
+                        </button>
+                        
+                        <button className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                          <Star className="w-4 h-4" />
+                          <div className="flex-1 text-left">
+                            <div className="font-medium">북마크 관리</div>
+                            <div className="text-xs text-gray-500">중요 페이지 저장</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>            
+        </div>
+
+        {/* 프로그레스 바 - 매우 얇게 */}
+        <div className="h-1 bg-gray-100">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 transition-all duration-300"
+            style={{ width: `${textbookData.progress || Math.round((currentPage / textbookData.totalPages) * 100) || 0}%` }}
+          />
+        </div>
       </div>
-      
+
       {/* 브레드크럼 */}
-      <div className='pl-8 pt-8'>
+      <div className='pl-8 pt-4 flex-shrink-0'>
         <Breadcrumb />
       </div>
       
-      {/* 메인 컨텐츠 */}
-      {renderContent()}
+      {/* 메인 컨텐츠 - 전체 화면 스크롤 가능 */}
+      <div className="flex-1 min-h-0">
+        {renderContent()}
+      </div>
 
       {/* 설정 메뉴 백그라운드 클릭으로 닫기 */}
       {showSettingsMenu && (
@@ -1035,19 +1220,6 @@ const TextbookStudyPage = () => {
                 >
                   확인
                 </button>
-                {/* <button
-                  onClick={() => {
-                    setShowChapterModal(false);
-                    // 챕터 완료로 표시
-                    const updatedPlan = plan.map(p => 
-                      p.id === currentChapter.id ? { ...p, completed: true, completedAt: new Date().toISOString() } : p
-                    );
-                    setPlan(updatedPlan);
-                  }}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  챕터 완료
-                </button> */}
               </div>
             </div>
           </div>
